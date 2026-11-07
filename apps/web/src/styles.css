@@ -1,0 +1,83 @@
+/* Component styles. Every colour, size and space comes from a token variable. */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--os-font);
+  font-size: var(--os-type-body-size);
+  line-height: var(--os-type-body-line);
+  background: var(--os-background);
+  color: var(--os-text);
+}
+h1, h2, h3 { margin: 0 0 var(--os-space-2); }
+h1 { font-size: var(--os-type-heading-size); font-weight: var(--os-type-heading-weight); }
+h2 { font-size: var(--os-type-title-size); font-weight: var(--os-type-title-weight); }
+h3 { font-size: var(--os-type-body-size); font-weight: 600; }
+p { margin: 0 0 var(--os-space-2); }
+a { color: var(--os-accent); }
+.muted { color: var(--os-text-muted); }
+.small { font-size: var(--os-type-caption-size); }
+
+:focus-visible { outline: 3px solid var(--os-focus-ring); outline-offset: 2px; }
+.skip { position: absolute; left: -9999px; }
+.skip:focus { left: var(--os-space-3); top: var(--os-space-3); background: var(--os-surface); padding: var(--os-space-2); z-index: 10; }
+
+.app { min-height: 100vh; display: flex; flex-direction: column; }
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--os-space-3);
+  padding: var(--os-space-3) var(--os-space-4); background: var(--os-surface); border-bottom: 1px solid var(--os-border);
+}
+.brand { font-weight: 700; margin-right: auto; }
+.nav { display: flex; gap: var(--os-space-1); padding: 0 var(--os-space-4); background: var(--os-surface); border-bottom: 1px solid var(--os-border); overflow-x: auto; }
+.nav button {
+  min-height: var(--os-touch-min); border: 0; background: none; color: var(--os-text-muted); font: inherit; padding: 0 var(--os-space-3);
+  border-bottom: 3px solid transparent; cursor: pointer;
+}
+.nav button[aria-current='page'] { color: var(--os-text); border-bottom-color: var(--os-accent); font-weight: 600; }
+main { flex: 1; padding: var(--os-space-4); max-width: 1200px; width: 100%; margin: 0 auto; }
+
+.banner { padding: var(--os-space-2) var(--os-space-4); background: var(--os-sandbox-subtle); color: var(--os-sandbox); font-size: var(--os-type-caption-size); }
+.notice { padding: var(--os-space-3); border-radius: var(--os-radius-md); margin-bottom: var(--os-space-3); }
+.notice.danger { background: var(--os-danger-subtle); color: var(--os-danger); }
+.notice.warning { background: var(--os-warning-subtle); color: var(--os-warning); }
+.notice.success { background: var(--os-success-subtle); color: var(--os-success); }
+.notice.info { background: var(--os-info-subtle); color: var(--os-info); }
+
+.card { background: var(--os-surface); border: 1px solid var(--os-border); border-radius: var(--os-radius-lg); padding: var(--os-space-4); margin-bottom: var(--os-space-3); }
+.grid { display: grid; gap: var(--os-space-3); grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--os-space-2); }
+.spread { justify-content: space-between; }
+.stack > * + * { margin-top: var(--os-space-2); }
+.list { list-style: none; margin: 0; padding: 0; }
+.list > li { padding: var(--os-space-3) 0; border-top: 1px solid var(--os-border); }
+.list > li:first-child { border-top: 0; }
+
+.btn {
+  min-height: var(--os-touch-min); padding: 0 var(--os-space-4); border-radius: var(--os-radius-md); font: inherit; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--os-border-strong); background: var(--os-surface); color: var(--os-text);
+}
+.btn.primary { background: var(--os-accent); border-color: var(--os-accent); color: var(--os-text-on-accent); }
+.btn.primary:active { background: var(--os-accent-pressed); }
+.btn.danger { color: var(--os-danger); border-color: var(--os-danger); }
+.btn.quiet { border-color: transparent; background: none; }
+.btn[aria-pressed='true'] { background: var(--os-selected); border-color: var(--os-selected-border); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.badge { display: inline-block; padding: 2px var(--os-space-2); border-radius: var(--os-radius-pill); font-size: var(--os-type-caption-size); font-weight: 600; }
+
+label { display: block; font-weight: 600; margin-bottom: var(--os-space-1); }
+input, select, textarea {
+  font: inherit; color: var(--os-text); background: var(--os-background); border: 1px solid var(--os-border-strong);
+  border-radius: var(--os-radius-md); padding: var(--os-space-2); min-height: var(--os-touch-min); width: 100%;
+}
+textarea { min-height: 120px; }
+input[type='checkbox'] { width: 22px; min-height: 22px; }
+.field { margin-bottom: var(--os-space-3); }
+
+/* Staff Room split desk: list on the left, the selected item on the right. One column on phones. */
+.desk { display: grid; gap: var(--os-space-4); grid-template-columns: 1fr; }
+@media (min-width: 1100px) { .desk { grid-template-columns: minmax(320px, 2fr) 3fr; } }
+.work-item { width: 100%; text-align: left; background: none; border: 1px solid var(--os-border); border-radius: var(--os-radius-md); padding: var(--os-space-3); color: inherit; font: inherit; cursor: pointer; }
+.work-item[aria-current='true'] { border-color: var(--os-selected-border); background: var(--os-selected); }
+.thread { max-height: 420px; overflow-y: auto; }
+.msg { padding: var(--os-space-2) var(--os-space-3); border-radius: var(--os-radius-md); margin-bottom: var(--os-space-2); background: var(--os-surface-raised); white-space: pre-wrap; }
+.msg.person { background: var(--os-accent-subtle); }

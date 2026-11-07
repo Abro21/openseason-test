@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "OpenSeason",
+    "slug": "openseason",
+    "scheme": "openseason",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": { "bundleIdentifier": "org.openseason.dev", "supportsTablet": true },
+    "android": { "package": "org.openseason.dev" },
+    "plugins": ["expo-secure-store"]
+  }
+}

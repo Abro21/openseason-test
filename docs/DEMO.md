@@ -43,6 +43,6 @@ Run `pnpm db:reset` first if you want a clean seed; the gateway's workers proces
 
 ## Also worth showing
 
-- **Leo Lopez** (teen) sees his own schedule and can RSVP. The refusal of private adult–minor conversations is enforced in the database and tested, but there is no screen yet for starting a DM.
+- **Leo Lopez** (teen) sees their own schedule and can RSVP. The refusal of private adult–minor conversations is enforced in the database and tested, but there is no screen yet for starting a DM.
 - **Gail Fan** sees Mia's schedule and results only: no locations, RSVPs or roster.
 - **Quinn Newcomer** has no roles and lands on "Join with an invitation".

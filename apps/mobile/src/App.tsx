@@ -2,7 +2,7 @@ import { contextKey } from '@openseason/domain';
 import { space, touch } from '@openseason/tokens';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, SafeAreaView, ScrollView, Text, View } from 'react-native';
 import { Home, Messages, SignIn, Staff } from './screens';
 import { SessionProvider, useSession } from './session';
 import { Badge, Button, T, useColors } from './ui';
@@ -37,7 +37,8 @@ function Shell() {
           <Button title="Sign out" onPress={s.signOut} />
         </View>
       )}
-      <ScrollView contentContainerStyle={{ padding: space[4], gap: space[3] }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: space[4], gap: space[3] }}>
         {!s.ready ? null : !s.signedIn ? <SignIn /> : picking ? (
           <View style={{ gap: space[2] }}>
             <T kind="title">Act as</T>
@@ -53,6 +54,7 @@ function Shell() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
       {s.signedIn && ctx && !picking && (
         <View accessibilityRole="tablist" style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: c.border, backgroundColor: c.surface }}>
           {(['home', ...(staffTab ? ['staff'] : []), 'messages'] as Tab[]).map((t) => (

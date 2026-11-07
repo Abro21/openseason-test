@@ -1,5 +1,6 @@
 import { contextKey, type AppContext } from '@openseason/domain';
 import { useState } from 'react';
+import { Claim } from './screens/Claim';
 import { ClubHome } from './screens/Club';
 import { FamilyFees, FamilyForms, FamilySchedule } from './screens/Family';
 import { Messages } from './screens/Messages';
@@ -46,7 +47,7 @@ export function App() {
       </nav>
       <main id="main" key={ctx ? contextKey(ctx) : 'none'}>
         {!s.contexts && <p className="muted" role="status">Loading…</p>}
-        {s.contexts && !ctx && <p>You're signed in, but not connected to a club, team or family yet. Ask your coach for an invite.</p>}
+        {s.contexts && !ctx && <><p>You're signed in, but not connected to a club, team or family yet.</p><Claim /></>}
         {ctx && tab === 'home' && <Home ctx={ctx} />}
         {ctx && tab === 'staff' && staffTab && <StaffRoom ctx={ctx} />}
         {tab === 'messages' && <Messages />}
@@ -67,6 +68,7 @@ function Home({ ctx }: { ctx: AppContext }) {
           <div style={{ gridColumn: '1 / -1' }}><FamilySchedule ctx={ctx} /></div>
           <FamilyForms athleteId={ctx.athleteId} />
           {ctx.kind === 'family' && <FamilyFees />}
+          {ctx.kind === 'family' && <Claim />}
         </div>
       </>
     );

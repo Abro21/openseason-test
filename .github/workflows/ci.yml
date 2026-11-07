@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # Throwaway CI database only. No real credentials anywhere in this workflow.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/openseason_local
+      DATABASE_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      TURBO_TELEMETRY_DISABLED: '1'
+      EXPO_NO_TELEMETRY: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - run: pnpm install --frozen-lockfile
+      - name: Lint, typecheck, unit and component tests
+        run: pnpm turbo run lint typecheck test
+      - name: Database policy, journey and gateway tests (real Postgres, ordinary identities)
+        run: pnpm test:db
+      - name: Web production build
+        run: pnpm --filter @openseason/web build
+      - name: Mobile JS bundle check (Metro export; this is not a native build)
+        run: pnpm --filter @openseason/mobile export:check

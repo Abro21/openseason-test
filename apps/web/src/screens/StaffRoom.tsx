@@ -52,6 +52,9 @@ export function StaffRoom({ ctx }: { ctx: AppContext }) {
             <section aria-labelledby="desk-list">
               <h1 id="desk-list">Staff Room</h1>
               <p className="muted">Staff prepare. You review, edit and approve. Nothing is sent without your approval.</p>
+              <ActionButton onRun={async () => { const n = await client.rpc<number>('staff_run_triggers'); setBatchResult(n > 0 ? `Staff prepared ${n} new item${n === 1 ? '' : 's'}.` : 'Nothing new for staff to prepare right now.'); reload(); }}>
+                Have staff check for work
+              </ActionButton>
               {options.length > 0 && (
                 <div className="card">
                   <h2>Ask staff to prepare</h2>

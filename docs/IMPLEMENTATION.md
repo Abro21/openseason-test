@@ -136,9 +136,9 @@ Run on 2026-11-07 in the build environment (Node 22, pnpm 10, Postgres 16 local)
 | Command | Result |
 | --- | --- |
 | `pnpm turbo run lint typecheck test` | 23 of 23 tasks successful. Unit tests: tokens 10, domain 20, api-client 7, dev-gateway 3, web 5 |
-| `pnpm test:db` | db package 71 passed; dev-gateway database tests 4 passed |
-| `pnpm --filter @openseason/web build` | Succeeded, about 247 kB JS |
-| `pnpm --filter @openseason/mobile export:check` | Succeeded: Android bundle 577 modules, iOS bundle 582 modules, Hermes bytecode. This is a JS bundle check only |
+| `pnpm test:db` | db package: 6 files, 71 tests passed. dev-gateway: 2 files, 7 tests passed (4 database tests plus the 3 crypto tests, which the filter also matches) |
+| `pnpm --filter @openseason/web build` | Succeeded, 249 kB JS (74 kB gzip) |
+| `pnpm --filter @openseason/mobile export:check` | Succeeded: Android bundle 581 modules, iOS bundle 582 modules, Hermes bytecode. This is a JS bundle check only |
 | Live smoke: gateway plus Vite dev server | Health ok; CORS header for `http://localhost:5173`; prepare → propose → approve → worker reached `succeeded`; sandbox deliveries recorded (3 email, 3 push); Vite served the app |
 
 Not verified:

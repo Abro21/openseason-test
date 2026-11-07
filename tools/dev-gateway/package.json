@@ -1,0 +1,22 @@
+{
+  "name": "@openseason/dev-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-only gateway: synthetic sign-in, RPC with per-request identity, sandbox payment/delivery/refund providers and workers.",
+  "scripts": {
+    "dev": "vite-node src/main.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "eslint src test",
+    "test": "vitest run --passWithNoTests src",
+    "test:db": "vitest run test"
+  },
+  "dependencies": {
+    "@openseason/contracts": "workspace:*",
+    "@openseason/db": "workspace:*",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5"
+  }
+}

@@ -11,7 +11,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "db:reset": "node scripts/db-reset.mjs",
-    "test:db": "pnpm db:reset && pnpm --filter @openseason/db test:db",
+    "test:db": "pnpm db:reset && pnpm --filter @openseason/db test:db && pnpm db:reset && pnpm --filter @openseason/dev-gateway test:db",
     "dev:gateway": "pnpm --filter @openseason/dev-gateway dev",
     "dev:web": "pnpm --filter @openseason/web dev"
   },
@@ -22,5 +22,6 @@
     "typescript": "~5.6.3",
     "typescript-eslint": "^8.72.1",
     "vitest": "^2.1.9"
-  }
+  },
+  "type": "module"
 }

@@ -114,7 +114,7 @@ describe('SMS and email RSVP replies', () => {
   it('applies Y/N replies through a scoped token, once, and re-checks the relationship', () =>
     tx(async (t) => {
       await t.asAdmin();
-      const [{ tok }] = await t.sql<{ tok: string }>(`select app.rsvp_link_create($1, $2, $3, 'sms') tok`, [EVENTS.blueGame, ATHLETES.mia, PEOPLE.pat]);
+      const tok = (await t.sql<{ tok: string }>(`select app.rsvp_link_create($1, $2, $3, 'sms') tok`, [EVENTS.blueGame, ATHLETES.mia, PEOPLE.pat]))[0]!.tok;
       await t.as('pat');
       expect(await t.fails('rsvp_apply_reply', { p_provider: 'sandbox_sms', p_provider_message_id: 'm1', p_token: tok, p_text: 'Y' }, 'app')).toMatch(/permission denied|not allowed/);
       await t.asService();

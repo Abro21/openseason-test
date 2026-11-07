@@ -9,5 +9,9 @@
     "typecheck": "tsc --noEmit -p .",
     "lint": "eslint src",
     "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@openseason/contracts": "workspace:*",
+    "zod": "^3.25.76"
   }
 }

@@ -69,15 +69,24 @@ importers:
 
   apps/web:
     dependencies:
+      '@electric-sql/pglite':
+        specifier: 0.3.16
+        version: 0.3.16
       '@openseason/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
       '@openseason/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@openseason/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@openseason/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@openseason/sandbox':
+        specifier: workspace:*
+        version: link:../../packages/sandbox
       '@openseason/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
@@ -146,6 +155,12 @@ importers:
 
   packages/domain: {}
 
+  packages/sandbox:
+    dependencies:
+      '@openseason/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/tokens: {}
 
   tools/dev-gateway:
@@ -156,6 +171,9 @@ importers:
       '@openseason/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@openseason/sandbox':
+        specifier: workspace:*
+        version: link:../../packages/sandbox
       pg:
         specifier: ^8.16.3
         version: 8.23.1
@@ -931,6 +949,9 @@ packages:
   '@csstools/css-tokenizer@3.0.4':
     resolution: {integrity: sha512-Vd/9EVDiu6PPJt9yAh6roZP6El1xHrdvIVGjyBsHR0RYwNHgL7FJPyIIW4fANJNG6FtyZfvlRPpFI4ZM/lubvw==}
     engines: {node: '>=18'}
+
+  '@electric-sql/pglite@0.3.16':
+    resolution: {integrity: sha512-mZkZfOd9OqTMHsK+1cje8OSzfAQcpD7JmILXTl5ahdempjUDdmg4euf1biDex5/LfQIDJ3gvCu6qDgdnDxfJmA==}
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}
@@ -5459,6 +5480,8 @@ snapshots:
       '@csstools/css-tokenizer': 3.0.4
 
   '@csstools/css-tokenizer@3.0.4': {}
+
+  '@electric-sql/pglite@0.3.16': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

@@ -131,22 +131,27 @@ These exercise the database through the same RPCs the clients call. They are not
 
 ## Commands run and results
 
-Run on 2026-11-07 in the build environment (Node 22, pnpm 10, Postgres 16 local).
+Run on 2026-11-08 in the build environment (Node 22, pnpm 10, Postgres 16 local).
 
 | Command | Result |
 | --- | --- |
-| `pnpm turbo run lint typecheck test` | 23 of 23 tasks successful. Unit tests: tokens 10, domain 20, api-client 7, dev-gateway 3, web 5 |
+| `pnpm turbo run lint typecheck test` | 26 of 26 tasks successful. Unit tests: tokens 10, domain 20, api-client 7, dev-gateway 3, web 10 (5 component tests, 4 in-browser sandbox tests, 1 full-app sandbox test) |
 | `pnpm test:db` | db package: 6 files, 71 tests passed. dev-gateway: 2 files, 7 tests passed (4 database tests plus the 3 crypto tests, which the filter also matches) |
-| `pnpm --filter @openseason/web build` | Succeeded, 249 kB JS (74 kB gzip) |
-| `pnpm --filter @openseason/mobile export:check` | Succeeded: Android bundle 581 modules, iOS bundle 582 modules, Hermes bytecode. This is a JS bundle check only |
-| Live smoke: gateway plus Vite dev server | Health ok; CORS header for `http://localhost:5173`; prepare → propose → approve → worker reached `succeeded`; sandbox deliveries recorded (3 email, 3 push); Vite served the app |
+| `pnpm --filter @openseason/web build` | Succeeded, 251 kB JS (75 kB gzip) |
+| `pnpm --filter @openseason/web build:sandbox` | Succeeded. Adds a lazily loaded 632 kB sandbox chunk and PGlite's files (8.9 MB WebAssembly, 4.9 MB data, 1.1 MB pgcrypto), about 15 MB in all |
+| `vite preview` of the sandbox build, fetched with curl | Index and every sandbox asset served; the WebAssembly as `application/wasm` |
+| `pnpm --filter @openseason/mobile export:check` | Succeeded: Android bundle 581 modules, iOS bundle 556 modules, Hermes bytecode. This is a JS bundle check only |
+| Live smoke on 2026-11-07: gateway plus Vite dev server | Health ok; CORS header for `http://localhost:5173`; prepare → propose → approve → worker reached `succeeded`; sandbox deliveries recorded (3 email, 3 push); Vite served the app |
+
+The in-browser sandbox tests run the real migrations and seed in PGlite and check: sign-in refusals, row-level security (a person with no team gets `42501`), a sandbox payment marking an installment paid, and staff work going from prepare to approve to `succeeded`, with the labelled sandbox staff reply. The full-app test renders the web app in sandbox mode under jsdom, signs in as Pat Parent, sees both children and pays through the stand-in checkout.
 
 Not verified:
 
-- The web UI rendered in a real browser (only jsdom component tests and a served index).
+- The web UI rendered in a real browser (only jsdom component tests and a served index). No browser is available in the build environment.
+- The sandbox build deployed anywhere, or loading at fresh.openseason.org.
 - Any native iOS or Android build.
 - Hosted Supabase, PostgREST argument coercion, realtime.
-- CI on GitHub (the workflow exists but has not run, because the branch could not be pushed when this was written).
+- CI on GitHub (the workflow exists but has not run, because the branch could not be pushed).
 
 ## Environment variables
 
@@ -157,5 +162,6 @@ Names only, in [`.env.example`](../.env.example). Local defaults: `DATABASE_URL`
 - Fresh repository, not built on David's foundation. Porting is a follow-up.
 - Requirements come from the brief alone; the PRD and Figma were not read.
 - The dev gateway is local-only and is not a production server.
+- The hosted demo build runs the database in each visitor's browser: data is per browser and is not shared between people.
 - Client screens are missing for tryouts, polls and elections, surveys, assignments and snacks, issue reports, coach invites, moderation and notification preferences, even where the database and tests exist.
 - No realtime, storage buckets or search.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { GATEWAY_URL, useSession } from '../session';
+import { GATEWAY_URL, getSandbox, SANDBOX, useSession } from '../session';
 import { Notice } from '../ui';
 
 /**
@@ -12,6 +12,10 @@ export function SignIn({ fetchImpl = fetch }: { fetchImpl?: typeof fetch }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (SANDBOX) {
+      getSandbox().then((s) => setPersonas(s.personas()), (e: Error) => setError(e.message));
+      return;
+    }
     fetchImpl(`${GATEWAY_URL}/auth/personas`)
       .then((r) => r.json())
       .then((b: { data: { id: string; label: string }[] }) => setPersonas(b.data))
@@ -21,6 +25,7 @@ export function SignIn({ fetchImpl = fetch }: { fetchImpl?: typeof fetch }) {
   async function choose(id: string) {
     setError(null);
     try {
+      if (SANDBOX) return await signIn((await getSandbox()).tokenFor(id));
       const r = await fetchImpl(`${GATEWAY_URL}/auth/dev-sign-in`, { method: 'POST', body: JSON.stringify({ persona: id }) });
       const b = (await r.json()) as { data?: { token: string }; error?: { message: string } };
       if (!b.data) throw new Error(b.error?.message ?? 'Sign-in failed');
@@ -33,7 +38,11 @@ export function SignIn({ fetchImpl = fetch }: { fetchImpl?: typeof fetch }) {
   return (
     <main id="main">
       <h1>Sign in to OpenSeason</h1>
-      <Notice tone="info">Sandbox: these are synthetic people from the seed data. There are no passwords and no real accounts.</Notice>
+      <Notice tone="info">
+        Sandbox: these are synthetic people from the seed data. There are no passwords and no real accounts.
+        {SANDBOX && ' The whole app, database included, runs in this browser, and nothing you do is sent anywhere.'}
+      </Notice>
+      {SANDBOX && !personas && !error && <p className="muted" role="status">Setting up your sandbox…</p>}
       {error && <Notice tone="danger">{error}</Notice>}
       {personas && (
         <ul className="list card" aria-label="Synthetic people">

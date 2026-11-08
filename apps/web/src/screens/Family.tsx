@@ -125,7 +125,8 @@ export function FamilyFees() {
                       <ActionButton variant="primary" label={`Pay installment ${i.seq}`} onRun={async () => {
                         // One idempotency key per installment and press, so a double tap cannot charge twice.
                         const r = await client.rpc<{ checkout_url?: string }>('payment_start', { p_installment: i.id, p_idempotency_key: `${i.id}:${Date.now()}` });
-                        if (r.checkout_url) { window.open(r.checkout_url, '_blank', 'noopener'); setCheckout(r.checkout_url); }
+                        if (r.checkout_url?.startsWith('#')) window.location.hash = r.checkout_url; // in-browser sandbox checkout
+                        else if (r.checkout_url) { window.open(r.checkout_url, '_blank', 'noopener'); setCheckout(r.checkout_url); }
                       }}>Pay</ActionButton>
                     )}
                   </li>

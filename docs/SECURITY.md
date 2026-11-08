@@ -30,6 +30,10 @@
 
 `tools/dev-gateway` refuses non-local databases, signs short-lived HS256 tokens with a per-process random secret and offers password-less sign-in as synthetic personas. Hosted environments must use Supabase Auth (Apple and Google sign-in per the PRD) and PostgREST/Edge Functions instead.
 
+## The in-browser sandbox is not a security boundary
+
+The hosted demo build (`VITE_SANDBOX=browser`) runs the database in the visitor's own tab. App calls still go through the same identity setup, so row-level security behaves as it does locally, but the visitor controls everything in that tab, the service role included, and can change their own copy freely. It holds synthetic seed data only, never sends data anywhere, and must never be used with real data or real accounts. Its stand-in checkout records a sandbox provider result directly, without the signed webhook the gateway uses, because there is no network boundary to protect.
+
 ## Residual risks and assumptions
 
 - Hosted Supabase was not exercised. Tests ran on plain Postgres 16 with a shim for Supabase roles and `auth.*` functions; behaviour on hosted Supabase (PostgREST argument coercion, realtime) needs a staging run.

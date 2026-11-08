@@ -1,0 +1,17 @@
+{
+  "name": "@openseason/sandbox",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Database identity and sandbox workers shared by the local gateway (Postgres) and the in-browser sandbox (PGlite).",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "eslint src",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@openseason/contracts": "workspace:*"
+  }
+}

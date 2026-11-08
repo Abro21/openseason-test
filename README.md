@@ -18,6 +18,7 @@ Club management for youth sports (free DIY tools for clubs, teams and families) 
 | `packages/contracts` | Client-callable RPC allowlist and zod response schemas |
 | `packages/api-client` | Typed client, transports (supabase-js or dev gateway), identity- and context-scoped cache |
 | `packages/db` | Seed ids and the database policy/journey test suite |
+| `packages/sandbox` | Database identity and sandbox workers shared by the dev gateway and the in-browser sandbox |
 | `tools/dev-gateway` | Local-only HTTP gateway: persona sign-in, per-request DB identity, sandbox checkout and webhooks, sandbox delivery/refund workers, fixed sandbox staff replies |
 | `apps/web` | React + Vite web app (Staff Room split desk, family, coach, club, messages) |
 | `apps/mobile` | Expo React Native app with native screens |
@@ -36,6 +37,10 @@ pnpm dev:web           # http://localhost:5173
 Sign in as any synthetic person on the web sign-in screen. Useful ones: Pat Parent (guardian of two children on two teams), Casey Coach (head coach, Staff plan), Dana Director (club owner, Staff plan), Jordan Multi (coach on one team and parent on another, free tools only), Gail Fan (invited fan).
 
 Mobile: `cd apps/mobile && pnpm start`, then open in Expo Go or a development build. Set `EXPO_PUBLIC_GATEWAY_URL` to an address the device can reach (Android emulator: `http://10.0.2.2:8787`). See [docs/NATIVE_BUILDS.md](docs/NATIVE_BUILDS.md).
+
+## Hosted demo (in-browser sandbox)
+
+`pnpm --filter @openseason/web build:sandbox` builds the web app with the whole backend inside the page: the same migrations, seed, row-level security and RPCs, running in Postgres compiled to WebAssembly ([PGlite](https://pglite.dev)). Each visitor gets a private synthetic database saved in their browser; nothing is sent to any server, so the build is plain static files. "Start over" in the banner restores the seed. `vercel.json` deploys this build. It is a demo, not a hosted backend: see [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Checks
 

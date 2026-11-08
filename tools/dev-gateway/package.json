@@ -14,6 +14,7 @@
   "dependencies": {
     "@openseason/contracts": "workspace:*",
     "@openseason/db": "workspace:*",
+    "@openseason/sandbox": "workspace:*",
     "pg": "^8.16.3"
   },
   "devDependencies": {

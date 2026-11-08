@@ -2,8 +2,16 @@ import { httpTransport, OpenSeasonClient } from '@openseason/api-client';
 import type { Contexts } from '@openseason/contracts';
 import { contextKey, type AppContext } from '@openseason/domain';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { BrowserSandbox } from './sandbox/browser';
 
 export const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL ?? 'http://localhost:8787';
+/** Hosted demo build: the database runs in the browser, so no server or hosted database is involved. */
+export const SANDBOX = import.meta.env.VITE_SANDBOX === 'browser';
+
+let sandbox: Promise<BrowserSandbox> | null = null;
+export function getSandbox(): Promise<BrowserSandbox> {
+  return (sandbox ??= import('./sandbox/browser').then((m) => m.openSandbox()));
+}
 const TOKEN_KEY = 'os.session';
 
 interface Session {
@@ -42,7 +50,16 @@ function readToken(): string | null {
 
 export function SessionProvider({ children, client: injected }: { children: ReactNode; client?: OpenSeasonClient }) {
   const [token, setToken] = useState<string | null>(readToken);
-  const client = useMemo(() => injected ?? new OpenSeasonClient(httpTransport({ baseUrl: GATEWAY_URL, getToken: () => readToken() })), [injected]);
+  const client = useMemo(() => injected ?? new OpenSeasonClient(SANDBOX
+    ? { call: async (fn, args) => (await getSandbox()).transport(readToken).call(fn, args) }
+    : httpTransport({ baseUrl: GATEWAY_URL, getToken: () => readToken() })), [injected]);
+
+  // The gateway runs its sandbox providers on a timer; the in-browser sandbox does the same while the tab is open.
+  useEffect(() => {
+    if (!SANDBOX || injected) return;
+    const t = setInterval(() => { void getSandbox().then((s) => s.runWorkers()).catch(() => undefined); }, 2000);
+    return () => clearInterval(t);
+  }, [injected]);
   const [contexts, setContexts] = useState<Contexts | null>(null);
   const [active, setActive] = useState<AppContext | null>(null);
 

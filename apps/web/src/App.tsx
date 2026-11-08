@@ -1,5 +1,6 @@
 import { contextKey, type AppContext } from '@openseason/domain';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { SandboxCheckout } from './sandbox/Checkout';
 import { Claim } from './screens/Claim';
 import { ClubHome } from './screens/Club';
 import { FamilyFees, FamilyForms, FamilySchedule } from './screens/Family';
@@ -7,7 +8,7 @@ import { Messages } from './screens/Messages';
 import { SignIn } from './screens/SignIn';
 import { StaffRoom } from './screens/StaffRoom';
 import { TeamHome } from './screens/Team';
-import { useSession } from './session';
+import { getSandbox, SANDBOX, useSession } from './session';
 
 type Tab = 'home' | 'staff' | 'messages';
 
@@ -16,6 +17,8 @@ const KIND_LABEL: Record<AppContext['kind'], string> = { club: 'Club', team: 'Co
 export function App() {
   const s = useSession();
   const [tab, setTab] = useState<Tab>('home');
+  const checkoutRef = useSandboxCheckoutRef();
+  if (SANDBOX && checkoutRef) return <SandboxCheckout providerRef={checkoutRef} onDone={() => { window.location.hash = ''; }} />;
   if (!s.signedIn) return <SignIn />;
   const ctx = s.active;
   const staffTab = ctx && (ctx.kind === 'team' || ctx.kind === 'club');
@@ -23,7 +26,11 @@ export function App() {
   return (
     <div className="app">
       <a className="skip" href="#main">Skip to content</a>
-      <div className="banner" role="note">Sandbox environment: synthetic data, no real messages, payments or accounts.</div>
+      <div className="banner" role="note">
+        {SANDBOX
+          ? <>Sandbox: synthetic data that lives only in this browser. Nothing is sent anywhere. <button type="button" className="btn quiet" onClick={resetSandbox}>Start over</button></>
+          : 'Sandbox environment: synthetic data, no real messages, payments or accounts.'}
+      </div>
       <header className="topbar">
         <span className="brand">OpenSeason</span>
         {s.choices.length > 0 && ctx && (
@@ -54,6 +61,25 @@ export function App() {
       </main>
     </div>
   );
+}
+
+/** The in-browser sandbox shows its stand-in checkout at #sandbox-checkout/<ref>. */
+function useSandboxCheckoutRef(): string | null {
+  const read = () => window.location.hash.match(/^#sandbox-checkout\/(sbx_cs_[0-9a-f]+)$/)?.[1] ?? null;
+  const [ref, setRef] = useState(read);
+  useEffect(() => {
+    const on = () => setRef(read());
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
+  return ref;
+}
+
+async function resetSandbox() {
+  if (!window.confirm('Start over with fresh sample data? Everything you changed in this sandbox is erased.')) return;
+  await (await getSandbox()).reset();
+  try { sessionStorage.clear(); } catch { /* storage unavailable */ }
+  window.location.reload();
 }
 
 function Home({ ctx }: { ctx: AppContext }) {

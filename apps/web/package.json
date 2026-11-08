@@ -6,14 +6,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:sandbox": "VITE_SANDBOX=browser vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p .",
     "lint": "eslint src",
     "test": "vitest run"
   },
   "dependencies": {
+    "@electric-sql/pglite": "0.3.16",
     "@openseason/api-client": "workspace:*",
     "@openseason/contracts": "workspace:*",
+    "@openseason/db": "workspace:*",
+    "@openseason/sandbox": "workspace:*",
     "@openseason/domain": "workspace:*",
     "@openseason/tokens": "workspace:*",
     "react": "18.3.1",

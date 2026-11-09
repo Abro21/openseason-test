@@ -27,15 +27,22 @@ export function SandboxCheckout({ providerRef, onDone }: { providerRef: string; 
   }
 
   return (
-    <main id="main">
-      <section className="card" aria-labelledby="checkout-h">
+    <main id="main" className="center-page">
+      <section className="card checkout" aria-labelledby="checkout-h">
+        <span className="brand dark">Open<span>Season</span></span>
         <h1 id="checkout-h">Sandbox checkout</h1>
         <Notice tone="warning">Sandbox. No card is collected and no money moves.</Notice>
-        {info === undefined && <p className="muted" role="status">Loading…</p>}
+        {info === undefined && <p className="loading muted" role="status">Loading…</p>}
         {info === null && <p>This checkout does not exist.</p>}
-        {info && <p>Pay {money(info.amount_cents, info.currency)}. Status: {info.status}.</p>}
+        {info && (
+          <div className="checkout-amount">
+            <span className="muted small">Amount</span>
+            <strong>{money(info.amount_cents, info.currency)}</strong>
+            <span className="muted small">Status: {info.status}</span>
+          </div>
+        )}
         {result && <Notice tone="info">{result}</Notice>}
-        <div className="row">
+        <div className="checkout-actions">
           {info && !result && <button type="button" className="btn primary" disabled={busy} onClick={() => finish('succeeded')}>Simulate success</button>}
           {info && !result && <button type="button" className="btn" disabled={busy} onClick={() => finish('failed')}>Simulate decline</button>}
           <button type="button" className="btn quiet" onClick={onDone}>Back to OpenSeason</button>

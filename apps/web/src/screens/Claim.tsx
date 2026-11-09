@@ -34,13 +34,13 @@ export function Claim() {
   }
 
   return (
-    <section className="card" aria-labelledby="claim-h">
+    <section className="card narrow" aria-labelledby="claim-h">
       <h2 id="claim-h">Join with an invitation</h2>
       <Show value={candidates}>
         {(list) => list.length === 0 ? null : (
-          <ul className="list">
+          <ul className="rows">
             {list.map((c) => (
-              <li key={c.invitation_id}>{c.invited_by_name ?? 'Someone'} invited you as {c.kind} {c.team_name ? `on ${c.team_name}` : ''} <span className="small muted">(expires {when(c.expires_at)})</span></li>
+              <li key={c.invitation_id} className="row-item"><span className="grow">{c.invited_by_name ?? 'Someone'} invited you as {c.kind}{c.team_name ? ` on ${c.team_name}` : ''}</span> <span className="small muted">Expires {when(c.expires_at)}</span></li>
             ))}
           </ul>
         )}

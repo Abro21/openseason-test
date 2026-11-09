@@ -53,6 +53,8 @@ export interface SemanticColors {
   accent: string;
   accentPressed: string;
   accentSubtle: string;
+  /** Accent used as text or a thin indicator on surface; passes AA where accent itself may not. */
+  accentText: string;
   focusRing: string;
   selected: string;
   selectedBorder: string;
@@ -68,26 +70,32 @@ export interface SemanticColors {
   pendingSubtle: string;
   sandbox: string;
   sandboxSubtle: string;
+  /** App chrome (sidebar, mobile top bar): the brand's midnight navy in both schemes. */
+  chrome: string;
+  chromeRaised: string;
+  chromeText: string;
+  chromeTextMuted: string;
 }
 
 /* Contrast: text on background >= 7:1 and textMuted >= 4.5:1 in both schemes
  * (checked in tokens.test.ts with the WCAG relative-luminance formula). */
 export const colors: Record<ColorScheme, SemanticColors> = {
   light: {
-    background: palette.slate50,
+    background: '#F3F5F8',
     surface: palette.white,
     surfaceRaised: palette.white,
     border: palette.slate200,
     borderStrong: palette.slate300,
     text: palette.navy900,
     textMuted: palette.slate600,
-    textOnAccent: palette.white,
-    accent: palette.mint700,
-    accentPressed: '#03623A',
+    textOnAccent: palette.navy950,
+    accent: palette.mint500,
+    accentPressed: palette.mint600,
     accentSubtle: palette.mint100,
+    accentText: palette.mint700,
     focusRing: palette.blue700,
     selected: palette.mint100,
-    selectedBorder: palette.mint700,
+    selectedBorder: palette.mint600,
     success: palette.mint700,
     successSubtle: palette.mint100,
     warning: palette.amber700,
@@ -100,6 +108,10 @@ export const colors: Record<ColorScheme, SemanticColors> = {
     pendingSubtle: palette.violet100,
     sandbox: palette.amber700,
     sandboxSubtle: palette.amber100,
+    chrome: palette.navy900,
+    chromeRaised: palette.navy800,
+    chromeText: palette.white,
+    chromeTextMuted: palette.slate400,
   },
   dark: {
     background: palette.navy950,
@@ -113,6 +125,7 @@ export const colors: Record<ColorScheme, SemanticColors> = {
     accent: palette.mint500,
     accentPressed: palette.mint300,
     accentSubtle: '#0E3B2A',
+    accentText: palette.mint500,
     focusRing: palette.blue400,
     selected: '#0E3B2A',
     selectedBorder: palette.mint500,
@@ -128,6 +141,10 @@ export const colors: Record<ColorScheme, SemanticColors> = {
     pendingSubtle: '#2B1F5C',
     sandbox: '#FDB022',
     sandboxSubtle: '#3D2A06',
+    chrome: '#070B16',
+    chromeRaised: palette.navy800,
+    chromeText: palette.white,
+    chromeTextMuted: palette.slate400,
   },
 };
 
@@ -135,7 +152,7 @@ export const colors: Record<ColorScheme, SemanticColors> = {
 export const space = { 0: 0, 1: 4, 2: 8, 3: 12, 4: 16, 5: 24, 6: 32, 7: 48 } as const;
 export type SpaceKey = keyof typeof space;
 
-export const radius = { sm: 4, md: 8, lg: 12, pill: 999 } as const;
+export const radius = { sm: 4, md: 8, lg: 12, xl: 16, pill: 999 } as const;
 
 /** Small type scale. Sizes are base values; both platforms scale with OS settings. */
 export const type = {
@@ -144,12 +161,16 @@ export const type = {
   bodyStrong: { size: 16, lineHeight: 24, weight: '600' },
   label: { size: 14, lineHeight: 20, weight: '600' },
   title: { size: 20, lineHeight: 28, weight: '600' },
-  heading: { size: 24, lineHeight: 32, weight: '700' },
+  heading: { size: 28, lineHeight: 36, weight: '700' },
+  /** Condensed uppercase display face, for the wordmark and sign-in headline only. */
+  display: { size: 48, lineHeight: 48, weight: '400' },
 } as const;
 export type TypeKey = keyof typeof type;
 
 export const fontFamily = {
-  web: "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  web: "'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+  /** The brand's condensed headline face (as in the marketing site). Web loads both from Google Fonts. */
+  display: "'Bebas Neue', 'Barlow Condensed', Impact, 'Arial Narrow', sans-serif",
   /* Native uses the platform system font when fontFamily is undefined. */
   native: undefined,
 } as const;
@@ -201,6 +222,7 @@ export function cssVariables(scheme: ColorScheme): string {
   }
   lines.push(`  --os-touch-min: ${touch.minTarget}px;`);
   lines.push(`  --os-font: ${fontFamily.web};`);
+  lines.push(`  --os-font-display: ${fontFamily.display};`);
   lines.push(`  --os-elevation-raised: ${elevation.raised};`);
   lines.push(`  --os-elevation-overlay: ${elevation.overlay};`);
   lines.push(`  --os-motion-fast: ${motion.fast}ms;`);

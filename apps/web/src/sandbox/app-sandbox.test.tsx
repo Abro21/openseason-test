@@ -37,6 +37,7 @@ describe('web app on the in-browser sandbox', () => {
     const picker = await screen.findByLabelText('Acting as');
     const labels = Array.from((picker as HTMLSelectElement).options).map((o) => o.textContent);
     expect(labels).toEqual(expect.arrayContaining(['Family: Mia L.', 'Family: Leo L.']));
+    fireEvent.click(await screen.findByRole('button', { name: 'Payments' }));
     await waitFor(() => expect(screen.getAllByRole('button', { name: /Pay installment/ }).length).toBeGreaterThan(0), { timeout: 10_000 });
     const before = screen.getAllByRole('button', { name: /Pay installment/ }).length;
 

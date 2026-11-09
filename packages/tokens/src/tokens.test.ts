@@ -14,6 +14,13 @@ describe('tokens', () => {
     it(`${scheme}: accent button text meets AA`, () => {
       expect(contrastRatio(c.textOnAccent, c.accent)).toBeGreaterThanOrEqual(4.5);
     });
+    it(`${scheme}: accent text and app chrome text meet AA`, () => {
+      expect(contrastRatio(c.accentText, c.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(c.accentText, c.background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(c.chromeText, c.chrome)).toBeGreaterThanOrEqual(7);
+      expect(contrastRatio(c.chromeTextMuted, c.chrome)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(c.chromeTextMuted, c.chromeRaised)).toBeGreaterThanOrEqual(4.5);
+    });
     it(`${scheme}: every status chip meets AA`, () => {
       const tones: StatusTone[] = ['neutral', 'success', 'warning', 'danger', 'info', 'pending', 'sandbox'];
       for (const t of tones) {

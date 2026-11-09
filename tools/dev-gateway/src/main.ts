@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import pg from 'pg';
 import { assertLocalDatabase } from './db.js';
 import { createGateway } from './server.js';
-import { runDeliveries, runQueuedActions, runRefunds, runSandboxStaff, type WorkerConfig } from './workers.js';
+import { runDeliveries, runQueuedActions, runRefunds, runSandboxStaff, runStaffRoutines, type WorkerConfig } from './workers.js';
 
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/openseason_local';
 const PORT = Number(process.env.GATEWAY_PORT ?? 8787);
@@ -32,6 +32,7 @@ setInterval(async () => {
     await runDeliveries(pool);
     await runRefunds(pool, { refundOutcome });
     await runSandboxStaff(pool);
+    await runStaffRoutines(pool);
   } catch (e) {
     console.error('[gateway] worker error', (e as Error).message);
   } finally {

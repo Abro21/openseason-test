@@ -9,7 +9,7 @@ interface Candidate { invitation_id: string; kind: string; team_name: string | n
  * needs the invite code; guardian claims then wait for the coach's approval.
  */
 export function Claim() {
-  const { client } = useSession();
+  const { client, reloadTenants } = useSession();
   const [candidates] = useLoad(() => client.rpc<Candidate[]>('my_claim_candidates'), [client]);
   const [code, setCode] = useState('');
   const [result, setResult] = useState<{ tone: 'success' | 'info' | 'danger'; text: string } | null>(null);
@@ -21,7 +21,7 @@ export function Claim() {
     try {
       const rows = await client.rpc<{ claim_id: string | null; status: string }[]>('claim_submit', { p_token: code.trim() });
       const s = rows[0]?.status;
-      if (s === 'approved') setResult({ tone: 'success', text: 'You are connected. Reload to see it in Acting as.' });
+      if (s === 'approved') { setResult({ tone: 'success', text: 'You are connected. The new role is in the Role switcher.' }); reloadTenants(); }
       else if (s === 'pending_approval') setResult({ tone: 'info', text: 'Request sent. The coach or club confirms it before you can see anything.' });
       else if (s === 'conflict') setResult({ tone: 'info', text: 'Someone else has a request for this record, so the club will sort it out with both of you.' });
       else setResult({ tone: 'danger', text: 'That code did not work. Check it, or ask for a new invitation.' });

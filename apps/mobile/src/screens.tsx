@@ -1,5 +1,5 @@
 import { randomUUID } from 'expo-crypto';
-import type { PreparedWork } from '@openseason/contracts';
+import type { PreparedWork, StaffRoom } from '@openseason/contracts';
 import { displayTitle, isEditable, type ActionStatus, type AppContext, type StaffRoleId } from '@openseason/domain';
 import { space } from '@openseason/tokens';
 import { useEffect, useState } from 'react';
@@ -33,18 +33,55 @@ export function SignIn() {
 
 const range = () => [new Date(Date.now() - 86400e3), new Date(Date.now() + 60 * 86400e3)] as const;
 
+type Work = StaffRoom['work'][number];
+const DONE = new Set(['saved', 'done', 'dismissed']);
+const openWork = (w: Work) => !DONE.has(w.status) && !(w.action && ['succeeded', 'ended'].includes(w.action.status));
+
 export function Home({ ctx }: { ctx: AppContext }) {
-  if (ctx.kind === 'club') return <ClubHome orgId={ctx.orgId} />;
+  const { client, tenant } = useSession();
+  const staffed = ctx.kind === 'team' || ctx.kind === 'club';
+  const [room, reloadRoom] = useLoad(() => (staffed ? client.staffRoom(tenant!.id) : Promise.resolve(null)), [client, tenant?.id, staffed]);
+  const [open, setOpen] = useState<string | null>(null);
+  if (open) return <WorkScreen id={open} onBack={() => { setOpen(null); reloadRoom(); }} />;
+  const r = room.state === 'ready' ? room.data : null;
+  const mine = (w: Work) => openWork(w) && (ctx.kind === 'team' ? w.team_id === ctx.teamId : ctx.kind === 'club' ? w.org_id === ctx.orgId : false);
+  const work = r?.entitlement.staff_enabled ? r.work.filter(mine) : [];
+  if (ctx.kind === 'club') return <ClubHome orgId={ctx.orgId} work={work} onOpen={setOpen} />;
   const teamIds = ctx.kind === 'team' ? [ctx.teamId] : ctx.teamIds;
   return (
     <View style={{ gap: space[3] }}>
-      <Schedule teamIds={teamIds} athleteId={ctx.kind === 'team' ? null : ctx.athleteId} canScore={ctx.kind === 'team' && ctx.role === 'head_coach'} rsvp={ctx.kind === 'family' || ctx.kind === 'athlete'} />
+      {ctx.kind === 'team' && <Waiting work={work.filter((w) => !w.event_id)} onOpen={setOpen} />}
+      <Schedule teamIds={teamIds} athleteId={ctx.kind === 'team' ? null : ctx.athleteId} canScore={ctx.kind === 'team' && ctx.role === 'head_coach'} rsvp={ctx.kind === 'family' || ctx.kind === 'athlete'}
+        drafts={work.filter((w) => w.event_id)} onOpen={setOpen} />
       {ctx.kind === 'family' && <Fees />}
     </View>
   );
 }
 
-function Schedule({ teamIds, athleteId, canScore, rsvp }: { teamIds: string[]; athleteId: string | null; canScore: boolean; rsvp: boolean }) {
+/** Staff drafts that wait on the person. Each opens full screen with its approval. */
+function Waiting({ work, onOpen }: { work: Work[]; onOpen: (id: string) => void }) {
+  if (work.length === 0) return null;
+  return (
+    <Card>
+      <T kind="title">Waiting on you</T>
+      <T kind="caption" muted>Staff drafted these. Nothing is sent until you approve it.</T>
+      {work.map((w) => <DraftRow key={w.id} w={w} onOpen={onOpen} />)}
+    </Card>
+  );
+}
+
+function DraftRow({ w, onOpen }: { w: Work; onOpen: (id: string) => void }) {
+  const c = useColors();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`Review ${w.title}`} onPress={() => onOpen(w.id)}
+      style={{ borderWidth: 1, borderColor: c.border, borderRadius: 8, padding: space[3], marginTop: space[2], minHeight: 44, gap: space[1] }}>
+      <T kind="bodyStrong">{w.title}</T>
+      {w.action ? <ActionBadge status={w.action.status} /> : <Badge tone="pending" text="Draft" />}
+    </Pressable>
+  );
+}
+
+function Schedule({ teamIds, athleteId, canScore, rsvp, drafts, onOpen }: { teamIds: string[]; athleteId: string | null; canScore: boolean; rsvp: boolean; drafts: Work[]; onOpen: (id: string) => void }) {
   const { client } = useSession();
   const [events, reload] = useLoad(async () => {
     const [from, to] = range();
@@ -70,6 +107,7 @@ function Schedule({ teamIds, athleteId, canScore, rsvp }: { teamIds: string[]; a
                   ))}
                 </View>
               ))}
+              {drafts.filter((w) => w.event_id === e.id).map((w) => <DraftRow key={w.id} w={w} onOpen={onOpen} />)}
               {canScore && e.kind === 'game' && <Scorer eventId={e.id} score={e.score} onSaved={reload} />}
             </Card>
           ))}
@@ -97,8 +135,8 @@ function Scorer({ eventId, score, onSaved }: { eventId: string; score: { home: n
 }
 
 function Fees() {
-  const { client } = useSession();
-  const [fees, reload] = useLoad(() => client.myFees(), [client]);
+  const { client, tenant } = useSession();
+  const [fees, reload] = useLoad(() => client.myFees(tenant!.id), [client, tenant?.id]);
   return (
     <Show value={fees}>
       {(list) => (
@@ -129,12 +167,13 @@ function Fees() {
   );
 }
 
-function ClubHome({ orgId }: { orgId: string }) {
+function ClubHome({ orgId, work, onOpen }: { orgId: string; work: Work[]; onOpen: (id: string) => void }) {
   const { client } = useSession();
   const [fin] = useLoad(() => client.rpc<{ outstanding_cents: number; overdue_cents: number }>('org_finance_summary', { p_org: orgId }), [client, orgId]);
   const [comp] = useLoad(() => client.rpc<{ certifications: { person: string; kind: string; status: string; gap: boolean }[] }>('compliance_overview', { p_org: orgId }), [client, orgId]);
   return (
-    <View>
+    <View style={{ gap: space[3] }}>
+      <Waiting work={work} onOpen={onOpen} />
       <Show value={fin}>{(f) => <Card><T kind="title">Money</T><T>{money(f.outstanding_cents)} outstanding · {money(f.overdue_cents)} overdue</T></Card>}</Show>
       <Show value={comp}>{(c) => (
         <Card>
@@ -147,42 +186,12 @@ function ClubHome({ orgId }: { orgId: string }) {
   );
 }
 
-/** Staff Room on a phone: a list, then one item full screen with its approval and thread. */
-export function Staff() {
-  const { client } = useSession();
-  const [room, reload] = useLoad(() => client.staffRoom(), [client]);
-  const [open, setOpen] = useState<string | null>(null);
-  const c = useColors();
-  if (open) return <WorkScreen id={open} onBack={() => { setOpen(null); reload(); }} />;
-  return (
-    <Show value={room}>
-      {(r) => !r.entitlement.staff_enabled ? (
-        <Card><T kind="title">Staff Room</T><T>Staff are part of the Staff plan. Every team tool still works without it. Plan purchase is not connected in this environment.</T></Card>
-      ) : (
-        <View>
-          <T kind="heading">Staff Room</T>
-          <T muted>Nothing is sent without your approval.</T>
-          {r.work.length === 0 && <T muted>No prepared work yet. Ask staff from the web desk or your thread.</T>}
-          {r.work.map((w) => (
-            <Pressable key={w.id} accessibilityRole="button" accessibilityLabel={`Open ${w.title}`} onPress={() => setOpen(w.id)}
-              style={{ borderWidth: 1, borderColor: c.border, borderRadius: 8, padding: space[3], marginTop: space[2], minHeight: 44 }}>
-              <T kind="bodyStrong">{w.title}</T>
-              <T kind="caption" muted>{displayTitle(w.role_id as StaffRoleId, r.titles as never)} · {when(w.updated_at)}</T>
-              {w.action ? <ActionBadge status={w.action.status} /> : <Badge tone="pending" text={w.status.replace('_', ' ')} />}
-            </Pressable>
-          ))}
-        </View>
-      )}
-    </Show>
-  );
-}
-
 function WorkScreen({ id, onBack }: { id: string; onBack: () => void }) {
   const { client } = useSession();
   const [work, reload] = useLoad(() => client.preparedWork(id), [client, id]);
   return (
     <View style={{ gap: space[3] }}>
-      <Button title="Back to Staff Room" onPress={onBack} />
+      <Button title="Back" onPress={onBack} />
       <Show value={work}>
         {(w: PreparedWork) => {
           const a = w.action;
@@ -251,9 +260,9 @@ function Thread({ role }: { role: StaffRoleId }) {
 }
 
 export function Messages() {
-  const { client } = useSession();
+  const { client, tenant } = useSession();
   const c = useColors();
-  const [convs] = useLoad(() => client.rpc<{ id: string; title: string | null; unread: boolean }[]>('my_conversations', { p_search: null, p_archived: false }), [client]);
+  const [convs] = useLoad(() => client.rpc<{ id: string; title: string | null; unread: boolean }[]>('my_conversations', { p_tenant: tenant!.id, p_search: null, p_archived: false }), [client, tenant?.id]);
   const [open, setOpen] = useState<string | null>(null);
   const [msgs, reload] = useLoad(async () => (open ? client.rpc<{ id: string; sender: string; body: string; created_at: string; held: boolean }[]>('conversation_messages', { p_conversation: open, p_before: null, p_limit: 50 }) : []), [client, open]);
   const [draft, setDraft] = useState('');

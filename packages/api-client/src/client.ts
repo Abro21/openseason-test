@@ -1,5 +1,5 @@
 import {
-  checkArgs, Contexts, Fee, isRpcName, PreparedWork, ScheduleEvent, SERVER_ONLY_RPCS, StaffRoom, StaffThreadPage,
+  checkArgs, Contexts, Fee, Tenants, isRpcName, PreparedWork, ScheduleEvent, SERVER_ONLY_RPCS, StaffRoom, StaffThreadPage,
   type RpcName,
 } from '@openseason/contracts';
 import { z } from 'zod';
@@ -10,7 +10,7 @@ import type { Transport } from './transport.js';
 type Args = Record<string, unknown>;
 
 /** Reads that are safe to cache briefly; every write clears the cache. */
-const CACHEABLE = new Set<RpcName>(['my_contexts', 'team_schedule', 'team_roster', 'my_fees', 'my_forms', 'staff_room', 'my_entitlement']);
+const CACHEABLE = new Set<RpcName>(['my_tenants', 'my_contexts', 'team_schedule', 'team_roster', 'my_fees', 'my_forms', 'staff_room', 'my_entitlement']);
 
 export class OpenSeasonClient {
   readonly cache = new ScopedCache();
@@ -34,7 +34,7 @@ export class OpenSeasonClient {
     return out as T;
   }
 
-  /** Signed in as someone else, or switched context: forget everything cached. */
+  /** Signed in as someone else, or switched club or context: forget everything cached. */
   setScope(personId: string | null, contextKey: string | null) {
     this.cache.setScope(personId, contextKey);
   }
@@ -50,15 +50,18 @@ export class OpenSeasonClient {
     return r.data;
   }
 
-  contexts() { return this.parsed(Contexts, 'my_contexts'); }
+  /** The clubs (tenants) this person belongs to. */
+  tenants() { return this.parsed(Tenants, 'my_tenants'); }
+  /** The person's roles inside one club. */
+  contexts(tenant: string) { return this.parsed(Contexts, 'my_contexts', { p_tenant: tenant }); }
   teamSchedule(team: string, from: Date, to: Date) {
     return this.parsed(z.array(ScheduleEvent), 'team_schedule', { p_team: team, p_from: from.toISOString(), p_to: to.toISOString() });
   }
   rsvp(event: string, athlete: string, status: 'yes' | 'no' | 'maybe') {
     return this.rpc('rsvp_set', { p_event: event, p_athlete: athlete, p_status: status });
   }
-  myFees() { return this.parsed(z.array(Fee), 'my_fees'); }
-  staffRoom() { return this.parsed(StaffRoom, 'staff_room'); }
+  myFees(tenant: string) { return this.parsed(z.array(Fee), 'my_fees', { p_tenant: tenant }); }
+  staffRoom(tenant: string) { return this.parsed(StaffRoom, 'staff_room', { p_tenant: tenant }); }
   preparedWork(id: string) { return this.parsed(PreparedWork, 'prepared_work_get', { p_id: id }); }
   staffThread(thread: string, before?: string, limit = 30) {
     return this.parsed(StaffThreadPage, 'staff_thread_messages', { p_thread: thread, p_before: before ?? null, p_limit: limit });

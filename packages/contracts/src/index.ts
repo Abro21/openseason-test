@@ -36,6 +36,16 @@ export const Contexts = z.object({
 });
 export type Contexts = z.infer<typeof Contexts>;
 
+/** Every club a person belongs to, with their roles and their scopes inside each. */
+export const Tenants = z.object({
+  person: z.object({ id: uuid, display_name: z.string() }).nullable(),
+  tenants: z.array(z.object({
+    id: uuid, kind: z.enum(['club', 'team']), name: z.string(), roles: z.array(z.string()),
+    contexts: Contexts.omit({ person: true }),
+  })),
+});
+export type Tenants = z.infer<typeof Tenants>;
+
 export const ScheduleEvent = z.object({
   id: uuid, team_id: uuid, kind: z.string(), title: z.string(), opponent: z.string().nullable(),
   starts_at: iso, ends_at: iso, status: z.string(), version: z.number(), location: z.string().nullable(),
@@ -82,7 +92,7 @@ export const StaffRoom = z.object({
   titles: z.record(z.string()),
   work: z.array(z.object({
     id: uuid, kind: z.string(), role_id: z.string(), title: z.string(), summary: z.string().nullable(), status: z.string(), stale: z.boolean(),
-    team_id: uuid.nullable(), org_id: uuid.nullable(), thread_id: uuid.nullable(), updated_at: iso,
+    team_id: uuid.nullable(), org_id: uuid.nullable(), event_id: uuid.nullable(), thread_id: uuid.nullable(), updated_at: iso,
     action: z.object({ id: uuid, status: z.string(), revision: z.number() }).nullable(),
   })),
   actions: z.array(z.object({ id: uuid, kind: z.string(), status: z.string(), summary: ActionSummary, revision: z.number(), prepared_work_id: uuid.nullable(), updated_at: iso })),

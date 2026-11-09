@@ -1,12 +1,12 @@
 // End-to-end through HTTP against the local database. These calls commit, so
 // run after `pnpm db:reset` (the test:db script does).
-import { TEAMS } from '@openseason/db';
+import { ORGS, TEAMS } from '@openseason/db';
 import type { AddressInfo } from 'node:net';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hmac } from '../src/crypto.js';
 import { createGateway } from '../src/server.js';
-import { runDeliveries, runQueuedActions, runSandboxStaff, SANDBOX_STAFF_NOTE } from '../src/workers.js';
+import { runDeliveries, runQueuedActions, runSandboxStaff, runStaffRoutines, SANDBOX_STAFF_NOTE } from '../src/workers.js';
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/openseason_local' });
 const server = createGateway({ pool, jwtSecret: 'test-jwt', webhookSecret: 'test-hook', publicUrl: 'http://gw', allowedOrigins: [] });
@@ -51,7 +51,7 @@ describe('dev gateway', () => {
 
   it('pays an installment through the sandbox checkout and ignores a replayed webhook', async () => {
     const pat = await signIn('pat');
-    const fees = (await rpc(pat, 'my_fees')).data as any[];
+    const fees = (await rpc(pat, 'my_fees', { p_tenant: ORGS.frontRange })).data as any[];
     const inst = fees[0].installments.find((i: any) => i.status !== 'paid');
     const start = await rpc(pat, 'payment_start', { p_installment: inst.id, p_idempotency_key: 'gateway-test-pay-0001' });
     expect(start.data.checkout_url).toBe(`http://gw/sandbox/checkout/${start.data.provider_ref}`);
@@ -65,7 +65,7 @@ describe('dev gateway', () => {
     const again = (await (await hook(hmac('test-hook', raw).toString('hex'))).json()) as { data: string };
     expect(again.data).not.toBe(ok.data);
 
-    const after = ((await rpc(pat, 'my_fees')).data as any[]).find((f) => f.invoice_id === fees[0].invoice_id);
+    const after = ((await rpc(pat, 'my_fees', { p_tenant: ORGS.frontRange })).data as any[]).find((f) => f.invoice_id === fees[0].invoice_id);
     expect(after.paid_cents).toBe(fees[0].paid_cents + inst.amount_cents);
     expect(after.receipts.some((x: any) => x.status === 'succeeded')).toBe(true);
   });
@@ -83,5 +83,16 @@ describe('dev gateway', () => {
     expect(await runSandboxStaff(pool)).toBeGreaterThan(0);
     const page = (await rpc(casey, 'staff_thread_messages', { p_thread: thread, p_before: null, p_limit: 10 })).data;
     expect(page.messages.find((m: any) => m.author === 'staff').body).toContain(SANDBOX_STAFF_NOTE);
+  });
+
+  it('runs staff routines as each planholder, inside each club, as drafts only', async () => {
+    const before = (await pool.query(`select count(*)::int n from public.pending_actions where status in ('approved','queued','processing','succeeded','failed','uncertain')`)).rows[0].n;
+    expect(await runStaffRoutines(pool)).toBeGreaterThan(0);
+    expect(await runStaffRoutines(pool)).toBe(0); // at most hourly per club
+    const casey = await signIn('casey');
+    const work = (await rpc(casey, 'staff_room', { p_tenant: ORGS.frontRange })).data.work;
+    expect(work.some((w: any) => w.kind === 'attendance_reminder')).toBe(true);
+    // Nothing went out: no new action left the draft or approval state.
+    expect((await pool.query(`select count(*)::int n from public.pending_actions where status in ('approved','queued','processing','succeeded','failed','uncertain')`)).rows[0].n).toBe(before);
   });
 });

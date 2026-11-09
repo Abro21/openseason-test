@@ -1,5 +1,5 @@
 import { OpenSeasonClient, type Transport } from '@openseason/api-client';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
@@ -20,14 +20,35 @@ const action = {
   requested_via: 'person', approved_by: null, rejected_reason: null, outcome: null, prepared_work_id: WORK, updated_at: NOW, attempts: [],
 };
 
+const FR = id(401);
+const MV = id(402);
+const GAME = id(710);
+const REMINDER = id(902);
+const none = { clubs: [], teams: [], family: [], athlete: [], fan: [] };
+
 function fixtures(over: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
   return {
-    my_contexts: { person: { id: id(102), display_name: 'Casey Coach' }, clubs: [], teams: [{ team_id: TEAM, org_id: id(401), label: 'U12 Blue', role: 'head_coach' }], family: [], athlete: [], fan: [] },
-    team_schedule: [],
+    // Casey coaches U12 Blue at Front Range and is a parent at Mesa Valley: two roles, two clubs.
+    my_tenants: {
+      person: { id: id(102), display_name: 'Casey Coach' },
+      tenants: [
+        { id: FR, kind: 'club', name: 'Front Range FC', roles: ['coach'], contexts: { ...none, teams: [{ team_id: TEAM, org_id: FR, label: 'U12 Blue', role: 'head_coach' }] } },
+        { id: MV, kind: 'club', name: 'Mesa Valley SC', roles: ['family'], contexts: { ...none, family: [{ athlete_id: id(306), label: 'Nora L.', team_ids: [id(503)] }] } },
+      ],
+    },
+    team_schedule: [{
+      id: GAME, team_id: TEAM, kind: 'game', title: 'Game', opponent: 'Rockets', starts_at: '2026-11-12T23:00:00Z', ends_at: '2026-11-13T00:30:00Z',
+      status: 'scheduled', version: 1, location: 'Field 3', score: null, my_rsvps: [], rsvp_summary: { yes: 5, no: 1, maybe: 0, no_response: 3 },
+    }],
     team_roster: [],
+    my_forms: [],
+    my_fees: [],
     staff_room: {
       entitlement: { plan: 'staff', status: 'active', current_period_end: null, staff_enabled: true }, titles: {},
-      work: [{ id: WORK, kind: 'announcement', role_id: 'admin', title: 'This week for U12 Blue', summary: 'Team announcement', status: 'proposed', stale: false, team_id: TEAM, org_id: null, thread_id: null, updated_at: NOW, action: { id: ACTION, status: 'in_review', revision: 3 } }],
+      work: [
+        { id: WORK, kind: 'announcement', role_id: 'admin', title: 'This week for U12 Blue', summary: 'Team announcement', status: 'proposed', stale: false, team_id: TEAM, org_id: null, event_id: null, thread_id: null, updated_at: NOW, action: { id: ACTION, status: 'in_review', revision: 3 } },
+        { id: REMINDER, kind: 'attendance_reminder', role_id: 'admin', title: 'RSVP reminder: Game vs Rockets', summary: null, status: 'proposed', stale: false, team_id: TEAM, org_id: null, event_id: GAME, thread_id: null, updated_at: NOW, action: { id: id(903), status: 'in_review', revision: 1 } },
+      ],
       actions: [],
     },
     prepared_work_get: {
@@ -54,9 +75,12 @@ function renderApp(t: Transport) {
   return render(<SessionProvider client={new OpenSeasonClient(t)}><App /></SessionProvider>);
 }
 
-async function openStaffRoomItem() {
-  fireEvent.click(await screen.findByRole('button', { name: 'Staff Room' }));
-  fireEvent.click(await screen.findByRole('button', { name: /This week for U12 Blue/ }));
+/** The coach's home lists staff drafts waiting on them; Review opens one in place. */
+async function reviewWaitingDraft() {
+  const waiting = await screen.findByRole('region', { name: 'Waiting on you' });
+  await within(waiting).findByText('This week for U12 Blue');
+  const row = within(waiting).getByText('This week for U12 Blue').closest('li')!;
+  fireEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Review' }));
   await screen.findByText('What approving does');
 }
 
@@ -66,11 +90,11 @@ async function noA11yViolations(node: Element) {
   expect(r.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
 }
 
-describe('Staff Room', () => {
+describe('staff work inside each task', () => {
   it('shows what approving will do and approves exactly the version on screen', async () => {
     const t = fakeTransport(fixtures());
     renderApp(t);
-    await openStaffRoomItem();
+    await reviewWaitingDraft();
     expect(screen.getByText('Send "This week" to 4 people in U12 Blue')).toBeTruthy();
     expect(screen.getByText(/To: Pat Parent, Jordan Multi/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Approve and send' }));
@@ -84,26 +108,51 @@ describe('Staff Room', () => {
     const { ApiError } = await import('@openseason/api-client');
     const t = fakeTransport(fixtures(), { action_approve: ApiError.fromCode('40001', 'this action changed; review it again') });
     renderApp(t);
-    await openStaffRoomItem();
+    await reviewWaitingDraft();
     fireEvent.click(screen.getByRole('button', { name: 'Approve and send' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/This changed since you opened it/);
     expect(screen.queryByText(/Approved\. It will be sent shortly/)).toBeNull();
   });
 
-  it('without the Staff plan, explains it and offers nothing to buy or prepare', async () => {
-    const t = fakeTransport(fixtures({ staff_room: { ...(fixtures().staff_room as object), entitlement: { plan: 'diy', status: 'none', current_period_end: null, staff_enabled: false }, work: [] } }));
+  it('puts the RSVP reminder on the game it is for, not in a separate section', async () => {
+    renderApp(fakeTransport(fixtures()));
+    expect(screen.queryByRole('button', { name: 'Staff Room' })).toBeNull();
+    const game = (await screen.findByText(/Game vs Rockets/, { selector: '.event-title' })).closest('li')!;
+    expect(within(game as HTMLElement).getByText('RSVP reminder: Game vs Rockets')).toBeTruthy();
+    expect(within(game as HTMLElement).getByText(/Drafted by/)).toBeTruthy();
+  });
+
+  it('without the Staff plan, explains it once on Home and leaves every task as it was', async () => {
+    const t = fakeTransport(fixtures({ staff_room: { ...(fixtures().staff_room as object), entitlement: { plan: 'diy', status: 'none', current_period_end: null, staff_enabled: false } } }));
     renderApp(t);
-    fireEvent.click(await screen.findByRole('button', { name: 'Staff Room' }));
     await screen.findByText(/Plan purchase is not connected/);
-    expect(screen.queryByText('Ask staff to prepare')).toBeNull();
+    await screen.findByText(/Game vs Rockets/, { selector: '.event-title' });
+    expect(screen.queryByText('RSVP reminder: Game vs Rockets')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Draft it' })).toBeNull();
   });
 
   it('has no detectable accessibility violations', async () => {
     const t = fakeTransport(fixtures());
     const { container } = renderApp(t);
-    await openStaffRoomItem();
+    await reviewWaitingDraft();
     await waitFor(() => expect(t.call.mock.calls.some(([fn]) => fn === 'staff_thread_messages')).toBe(true));
     await noA11yViolations(container);
+  });
+});
+
+describe('roles and clubs', () => {
+  it('switches role and club like the prototype, and reads only the chosen club', async () => {
+    const t = fakeTransport(fixtures());
+    renderApp(t);
+    const role = await screen.findByLabelText('Role') as HTMLSelectElement;
+    expect(Array.from(role.options).map((o) => o.textContent)).toEqual(['Coach', 'Parent']);
+    expect((screen.getByLabelText('Team') as HTMLSelectElement).value).toContain(FR);
+    fireEvent.change(role, { target: { value: 'family' } });
+    const child = await screen.findByLabelText('Child') as HTMLSelectElement;
+    expect(Array.from(child.options).map((o) => o.textContent)).toEqual(['Nora L. · Mesa Valley SC']);
+    await waitFor(() => expect(t.call.mock.calls.some(([fn, a]) => fn === 'my_fees' && a.p_tenant === MV)).toBe(true));
+    expect(t.call.mock.calls.filter(([fn]) => fn === 'my_fees').every(([, a]) => a.p_tenant === MV)).toBe(true);
+    await waitFor(() => expect(t.call.mock.calls.some(([fn, a]) => fn === 'staff_room' && a.p_tenant === MV)).toBe(true));
   });
 });
 

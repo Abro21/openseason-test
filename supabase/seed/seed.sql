@@ -68,21 +68,25 @@ insert into public.athletes(id, person_id, first_name, last_initial, age_band, c
   ('00000000-0000-4000-8000-000000000302', '00000000-0000-4000-8000-000000000105', 'Leo', 'L', 'teen', '00000000-0000-4000-8000-000000000107'),
   ('00000000-0000-4000-8000-000000000303', null, 'Ava', 'M', 'under_13', '00000000-0000-4000-8000-000000000102'),
   ('00000000-0000-4000-8000-000000000304', null, 'Noah', 'P', 'under_13', '00000000-0000-4000-8000-000000000102'),
-  ('00000000-0000-4000-8000-000000000305', null, 'Zoe', 'O', 'under_13', '00000000-0000-4000-8000-000000000109');
+  ('00000000-0000-4000-8000-000000000305', null, 'Zoe', 'O', 'under_13', '00000000-0000-4000-8000-000000000109'),
+  -- Nora is Pat's third child and plays in a different club, so Pat belongs to two tenants.
+  ('00000000-0000-4000-8000-000000000306', null, 'Nora', 'L', 'under_13', '00000000-0000-4000-8000-000000000109');
 
 insert into private.athlete_dob(athlete_id, dob) values
   ('00000000-0000-4000-8000-000000000301', '2015-03-10'),
   ('00000000-0000-4000-8000-000000000302', '2012-05-02'),
   ('00000000-0000-4000-8000-000000000303', '2015-08-20'),
   ('00000000-0000-4000-8000-000000000304', '2015-01-15'),
-  ('00000000-0000-4000-8000-000000000305', '2015-06-01');
+  ('00000000-0000-4000-8000-000000000305', '2015-06-01'),
+  ('00000000-0000-4000-8000-000000000306', '2016-02-11');
 
 insert into public.guardianships(athlete_id, guardian_person_id, status, approved_by, approved_at) values
   ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000104', 'active', '00000000-0000-4000-8000-000000000102', now()),
   ('00000000-0000-4000-8000-000000000302', '00000000-0000-4000-8000-000000000104', 'active', '00000000-0000-4000-8000-000000000107', now()),
   ('00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000107', 'active', '00000000-0000-4000-8000-000000000102', now()),
   ('00000000-0000-4000-8000-000000000304', '00000000-0000-4000-8000-000000000108', 'active', '00000000-0000-4000-8000-000000000102', now()),
-  ('00000000-0000-4000-8000-000000000305', '00000000-0000-4000-8000-000000000109', 'active', '00000000-0000-4000-8000-000000000109', now());
+  ('00000000-0000-4000-8000-000000000305', '00000000-0000-4000-8000-000000000109', 'active', '00000000-0000-4000-8000-000000000109', now()),
+  ('00000000-0000-4000-8000-000000000306', '00000000-0000-4000-8000-000000000104', 'active', '00000000-0000-4000-8000-000000000109', now());
 
 -- Verifiable guardian consent. Noah's is still pending, so he stays "invited".
 -- The provider refs are sandbox placeholders, not real verifications.
@@ -90,14 +94,16 @@ insert into public.consents(athlete_id, kind, status, method, provider_ref, gran
   ('00000000-0000-4000-8000-000000000301', 'guardian_verifiable', 'verified', 'provider_verified', 'sandbox_vc_mia', '00000000-0000-4000-8000-000000000104'),
   ('00000000-0000-4000-8000-000000000303', 'guardian_verifiable', 'verified', 'in_person_verified', null, '00000000-0000-4000-8000-000000000107'),
   ('00000000-0000-4000-8000-000000000304', 'guardian_verifiable', 'pending', null, null, '00000000-0000-4000-8000-000000000108'),
-  ('00000000-0000-4000-8000-000000000305', 'guardian_verifiable', 'verified', 'provider_verified', 'sandbox_vc_zoe', '00000000-0000-4000-8000-000000000109');
+  ('00000000-0000-4000-8000-000000000305', 'guardian_verifiable', 'verified', 'provider_verified', 'sandbox_vc_zoe', '00000000-0000-4000-8000-000000000109'),
+  ('00000000-0000-4000-8000-000000000306', 'guardian_verifiable', 'verified', 'provider_verified', 'sandbox_vc_nora', '00000000-0000-4000-8000-000000000104');
 
 insert into public.roster_entries(team_id, athlete_id, jersey, status, added_by) values
   ('00000000-0000-4000-8000-000000000501', '00000000-0000-4000-8000-000000000301', '7', 'active', '00000000-0000-4000-8000-000000000102'),
   ('00000000-0000-4000-8000-000000000502', '00000000-0000-4000-8000-000000000302', '10', 'active', '00000000-0000-4000-8000-000000000107'),
   ('00000000-0000-4000-8000-000000000501', '00000000-0000-4000-8000-000000000303', '4', 'active', '00000000-0000-4000-8000-000000000102'),
   ('00000000-0000-4000-8000-000000000501', '00000000-0000-4000-8000-000000000304', null, 'invited', '00000000-0000-4000-8000-000000000102'),
-  ('00000000-0000-4000-8000-000000000503', '00000000-0000-4000-8000-000000000305', '9', 'active', '00000000-0000-4000-8000-000000000109');
+  ('00000000-0000-4000-8000-000000000503', '00000000-0000-4000-8000-000000000305', '9', 'active', '00000000-0000-4000-8000-000000000109'),
+  ('00000000-0000-4000-8000-000000000503', '00000000-0000-4000-8000-000000000306', '11', 'active', '00000000-0000-4000-8000-000000000109');
 
 insert into public.fan_follows(athlete_id, team_id, fan_person_id, invited_by) values
   ('00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000501', '00000000-0000-4000-8000-000000000106', '00000000-0000-4000-8000-000000000104');
@@ -138,11 +144,26 @@ insert into public.installments(invoice_id, seq, amount_cents, due_on)
 select inv, s, 15000, current_date + 10 + (s - 1) * 30
 from (values ('00000000-0000-4000-8000-000000000811'::uuid), ('00000000-0000-4000-8000-000000000812'::uuid)) v(inv), generate_series(1, 3) s;
 
+-- One overdue balance in Front Range (Ava's tournament fee), so club staff
+-- have a real reminder to prepare.
+insert into public.invoices(id, org_id, athlete_id, description, amount_cents) values
+  ('00000000-0000-4000-8000-000000000814', '00000000-0000-4000-8000-000000000401', '00000000-0000-4000-8000-000000000303', 'Fall tournament fee', 6000);
+insert into public.installments(invoice_id, seq, amount_cents, due_on) values
+  ('00000000-0000-4000-8000-000000000814', 1, 6000, current_date - 6);
+
+-- Mesa Valley's own fee and waiver. Pat sees these only inside Mesa Valley.
+insert into public.invoices(id, org_id, athlete_id, description, amount_cents) values
+  ('00000000-0000-4000-8000-000000000813', '00000000-0000-4000-8000-000000000402', '00000000-0000-4000-8000-000000000306', 'Mesa Valley season dues', 20000);
+insert into public.installments(invoice_id, seq, amount_cents, due_on) values
+  ('00000000-0000-4000-8000-000000000813', 1, 20000, current_date + 14);
+
 insert into public.documents(id, org_id, kind, title, body, version, required) values
   ('00000000-0000-4000-8000-000000000821', '00000000-0000-4000-8000-000000000401', 'waiver', 'Participation waiver',
    'Sample waiver text for local development only. This is not legal language.', 1, true),
   ('00000000-0000-4000-8000-000000000822', '00000000-0000-4000-8000-000000000401', 'code_of_conduct', 'Family code of conduct',
-   'Sample code of conduct for local development only.', 1, true);
+   'Sample code of conduct for local development only.', 1, true),
+  ('00000000-0000-4000-8000-000000000823', '00000000-0000-4000-8000-000000000402', 'waiver', 'Mesa Valley player waiver',
+   'Sample Mesa Valley waiver for local development only. This is not legal language.', 1, true);
 
 insert into public.signatures(document_id, document_version, athlete_id, signer_person_id, typed_name) values
   ('00000000-0000-4000-8000-000000000821', 1, '00000000-0000-4000-8000-000000000301', '00000000-0000-4000-8000-000000000104', 'Pat Parent');

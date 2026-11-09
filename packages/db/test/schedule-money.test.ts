@@ -99,11 +99,11 @@ describe('fees and payments', () => {
   it('shows a parent only their own children’s fees', () =>
     tx(async (t) => {
       await t.as('pat');
-      const fees = await t.rpc('my_fees');
+      const fees = await t.rpc('my_fees', { p_tenant: ORGS.frontRange });
       expect(fees.map((f: any) => f.athlete)).toEqual(['Mia L.']);
       expect(fees[0].installments).toHaveLength(3);
       await t.as('riley');
-      expect(await t.rpc('my_fees')).toEqual([]);
+      expect(await t.rpc('my_fees', { p_tenant: ORGS.frontRange })).toEqual([]);
     }));
 
   it('splits a fee into installments with the remainder on the first', () =>
@@ -140,7 +140,7 @@ describe('fees and payments', () => {
       expect(await t.rpc('payment_apply_provider_event', { p_provider: 'sandbox', p_event_id: 'evt_2', p_provider_ref: a.provider_ref, p_outcome: 'failed' }, 'app')).toBe('ignored_after_success');
 
       await t.as('pat');
-      const [fee] = await t.rpc('my_fees');
+      const [fee] = await t.rpc('my_fees', { p_tenant: ORGS.frontRange });
       expect(fee).toMatchObject({ status: 'partially_paid', paid_cents: 15000 });
       expect(fee.installments[0].status).toBe('paid');
     }));
@@ -170,7 +170,7 @@ describe('forms, compliance and tryouts', () => {
   it('signs the current version of a form only', () =>
     tx(async (t) => {
       await t.as('pat');
-      const forms = await t.rpc('my_forms');
+      const forms = await t.rpc('my_forms', { p_tenant: ORGS.frontRange });
       expect(forms.filter((f: any) => !f.signed_at).map((f: any) => `${f.athlete}:${f.title}`).sort()).toEqual(
         ['Leo:Family code of conduct', 'Leo:Participation waiver', 'Mia:Family code of conduct']);
       expect(await t.fails('document_sign', { p_document: DOCUMENTS.conduct, p_athlete: ATHLETES.mia, p_typed_name: 'Pat Parent', p_document_version: 0 })).toMatch(/updated/);
@@ -190,7 +190,7 @@ describe('forms, compliance and tryouts', () => {
     tx(async (t) => {
       await t.as('pat');
       const signup = await t.rpc('tryout_signup', { p_tryout: TRYOUTS.spring, p_athlete: ATHLETES.mia });
-      expect((await t.rpc('my_fees')).map((f: any) => f.description)).toContain('Tryout fee: Spring 2027 U13 tryouts');
+      expect((await t.rpc('my_fees', { p_tenant: ORGS.frontRange })).map((f: any) => f.description)).toContain('Tryout fee: Spring 2027 U13 tryouts');
       // Families cannot read evaluator scores.
       await t.as('dana');
       await t.rpc('tryout_score', { p_signup: signup, p_scores: { first_touch: 4, passing: 3, vision: 4, effort: 5 }, p_notes: 'strong' });

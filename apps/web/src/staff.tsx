@@ -1,148 +1,164 @@
-// The Staff Room: staff prepare work, the person reviews and edits it, and
+// Staff work lives on the task it belongs to. Staff prepare drafts in place
+// (an overdue-fee reminder on Payments, an RSVP reminder on the game it is for,
+// a practice plan on the practice), the person reviews and edits them there, and
 // nothing reaches anyone until the person approves the exact version shown.
 import { idempotencyKey } from '@openseason/api-client';
-import type { PendingAction, PreparedWork } from '@openseason/contracts';
-import { displayTitle, isEditable, type ActionStatus, type AppContext, type PreparedWorkKind, type StaffRoleId } from '@openseason/domain';
-import { useEffect, useState } from 'react';
-import { useSession } from '../session';
-import { Icon } from '../icons';
-import { ActionBadge, ActionButton, Badge, describeError, Empty, Notice, PageHeader, Show, useLoad, when } from '../ui';
+import type { PendingAction, PreparedWork, StaffRoom } from '@openseason/contracts';
+import { displayTitle, isEditable, type ActionStatus, type PreparedWorkKind, type StaffRoleId } from '@openseason/domain';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { Icon } from './icons';
+import { useSession } from './session';
+import { ActionBadge, ActionButton, Badge, describeError, Notice, Show, useLoad, when } from './ui';
 
-type Prepare = { kind: PreparedWorkKind; label: string; target: Record<string, unknown> };
+type Work = StaffRoom['work'][number];
+type Titles = Partial<Record<StaffRoleId, string>>;
+interface Staff { room: StaffRoom | null; reload: () => void; titles: Titles; tenantId: string }
 
-function prepareOptions(ctx: AppContext, nextGame: string | null): Prepare[] {
-  if (ctx.kind === 'team') {
-    const out: Prepare[] = [
-      { kind: 'practice_plan', label: 'Practice plan', target: { team_id: ctx.teamId } },
-      { kind: 'announcement', label: 'Week-ahead announcement', target: { team_id: ctx.teamId } },
-    ];
-    if (nextGame) out.push({ kind: 'attendance_reminder', label: 'RSVP reminder for next game', target: { event_id: nextGame } });
-    return out;
-  }
-  if (ctx.kind === 'club') {
-    return [
-      { kind: 'fee_reminder', label: 'Overdue fee reminders', target: { org_id: ctx.orgId } },
-      { kind: 'certification_nudge', label: 'Certification nudges', target: { org_id: ctx.orgId } },
-    ];
-  }
-  return [];
+const StaffCtx = createContext<Staff | null>(null);
+
+/** Loads the person's staff work inside one club, and keeps it fresh while the page is open. */
+export function StaffProvider({ tenantId, children }: { tenantId: string; children: ReactNode }) {
+  const { client } = useSession();
+  const [room, reload] = useLoad(() => client.staffRoom(tenantId), [client, tenantId]);
+  useEffect(() => {
+    const t = setInterval(reload, 5000);
+    return () => clearInterval(t);
+  }, [reload]);
+  const data = room.state === 'ready' ? room.data : null;
+  return <StaffCtx.Provider value={{ room: data, reload, titles: (data?.titles ?? {}) as Titles, tenantId }}>{children}</StaffCtx.Provider>;
 }
 
-export function StaffRoom({ ctx }: { ctx: AppContext }) {
+function useStaff(): Staff | null { return useContext(StaffCtx); }
+
+const DONE_WORK = new Set(['saved', 'done', 'dismissed']);
+const DONE_ACTION = new Set(['succeeded', 'ended']);
+const NEEDS_YOU = new Set(['proposed', 'in_review', 'needs_refresh', 'rejected', 'failed']);
+
+const isOpen = (w: Work) => !DONE_WORK.has(w.status) && !(w.action && DONE_ACTION.has(w.action.status));
+const needsYou = (w: Work) => isOpen(w) && (!w.action || NEEDS_YOU.has(w.action.status));
+
+/** Where each kind of draft lives, so Home can say where to find it. */
+export const TASK_OF: Record<string, string> = {
+  fee_reminder: 'Payments', certification_nudge: 'Compliance', attendance_reminder: 'Schedule',
+  practice_plan: 'Schedule', announcement: 'Messages', player_feedback: 'Roster', rotation: 'Schedule',
+};
+
+export interface Prepare { kind: PreparedWorkKind; label: string; target: Record<string, unknown> }
+
+/**
+ * Staff drafts for one task, shown inside that task. With no draft yet, a
+ * person on the staff plan can ask staff to draft one here. People without
+ * the plan see nothing extra: the task itself works the same.
+ */
+export function StaffDrafts({ match, prepare, compact }: { match: (w: Work) => boolean; prepare?: Prepare; compact?: boolean }) {
+  const staff = useStaff();
   const { client } = useSession();
-  const [room, reload] = useLoad(() => client.staffRoom(), [client]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [batch, setBatch] = useState<Record<string, PendingAction>>({});
-  const [batchResult, setBatchResult] = useState<string | null>(null);
-  const [nextGame, setNextGame] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (ctx.kind !== 'team') return;
-    client.teamSchedule(ctx.teamId, new Date(), new Date(Date.now() + 30 * 86400e3))
-      .then((ev) => setNextGame(ev.find((e) => e.kind === 'game')?.id ?? null), () => setNextGame(null));
-  }, [client, ctx]);
-
+  const [open, setOpen] = useState<string | null>(null);
+  if (!staff?.room || !staff.room.entitlement.staff_enabled) return null;
+  const items = staff.room.work.filter((w) => isOpen(w) && match(w));
+  if (items.length === 0 && !prepare) return null;
   return (
-    <Show value={room}>
-      {(r) => {
-        if (!r.entitlement.staff_enabled) return <NoStaff plan={r.entitlement.plan} />;
-        const titles = r.titles as Partial<Record<StaffRoleId, string>>;
-        const options = prepareOptions(ctx, nextGame);
-        return (
-          <>
-            <PageHeader title="Staff Room" subtitle="Staff prepare. You review, edit and approve. Nothing is sent without your approval."
-              actions={(
-                <ActionButton onRun={async () => { const n = await client.rpc<number>('staff_run_triggers'); setBatchResult(n > 0 ? `Staff prepared ${n} new item${n === 1 ? '' : 's'}.` : 'Nothing new for staff to prepare right now.'); reload(); }}>
-                  Check for new work
-                </ActionButton>
-              )} />
-            {options.length > 0 && (
-              <div className="prepare-bar">
-                <h2 className="prepare-label">Ask staff to prepare</h2>
-                <div className="chips">
-                  {options.map((o) => (
-                    <ActionButton key={o.kind} className="chip-btn" onRun={async () => {
-                      const id = await client.rpc<string>('staff_prepare', { p_kind: o.kind, p_target: o.target, p_thread: null });
-                      reload();
-                      setSelected(id);
-                    }}><Icon name="plus" size={16} /> {o.label}</ActionButton>
-                  ))}
-                </div>
-              </div>
-            )}
-            {batchResult && <Notice tone="info">{batchResult}</Notice>}
-            {Object.keys(batch).length > 0 && (
-              <div className="card batch" aria-live="polite">
-                <h2>Approve {Object.keys(batch).length} together</h2>
-                <ul className="plain">{Object.values(batch).map((a) => <li key={a.id}>{a.summary.effect} <span className="small muted">(version {a.revision})</span></li>)}</ul>
-                <div className="row">
-                  <ActionButton variant="primary" onRun={async () => {
-                    const items = Object.values(batch).map((a) => ({ id: a.id, revision: a.revision, hash: a.payload_hash }));
-                    const res = await client.approveBatch(items, idempotencyKey());
-                    const failed = res.results.filter((x) => !x.ok);
-                    setBatchResult(failed.length === 0 ? `Approved ${res.results.length}.` : `Approved ${res.results.length - failed.length}. ${failed.length} need attention: ${failed.map((f) => f.error).join('; ')}`);
-                    setBatch({});
-                    reload();
-                  }}>Approve these exactly as shown</ActionButton>
-                  <button type="button" className="btn quiet" onClick={() => setBatch({})}>Clear</button>
-                </div>
-              </div>
-            )}
-            <div className="desk" data-open={selected ? 'true' : undefined}>
-              <section className="desk-list" aria-labelledby="desk-list">
-                <h2 id="desk-list" className="list-heading">Prepared work</h2>
-                {r.work.length === 0 ? <div className="card"><Empty icon="spark" title="No prepared work yet">Ask staff to prepare something, or check for new work.</Empty></div> : (
-                  <ul className="work-list" aria-label="Prepared work">
-                    {r.work.map((w) => (
-                      <li key={w.id} className="work-row">
-                        {w.action && isEditable(w.action.status as ActionStatus) && (
-                          <input type="checkbox" className="work-check" aria-label={`Select ${w.title} for batch approval`} checked={Boolean(batch[w.action.id])}
-                            onChange={async (e) => {
-                              const id = w.action!.id;
-                              if (!e.target.checked) { const { [id]: _drop, ...rest } = batch; setBatch(rest); return; }
-                              const a = await client.rpc<PendingAction>('action_get', { p_id: id });
-                              setBatch((b) => ({ ...b, [id]: a }));
-                            }} />
-                        )}
-                        <button type="button" className="work-item" aria-current={selected === w.id} onClick={() => setSelected(w.id)}>
-                          <span className="work-text">
-                            <span className="work-title">
-                              <strong>{w.title}</strong>
-                              {w.action ? <ActionBadge status={w.action.status} /> : <Badge tone="pending">{w.status.replace('_', ' ')}</Badge>}
-                            </span>
-                            <span className="small muted">{displayTitle(w.role_id as StaffRoleId, titles)} · {when(w.updated_at)}</span>
-                            {w.stale && <span><Badge tone="warning">Sources changed</Badge></span>}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-              <section className="desk-detail" aria-label="Selected work">
-                {selected ? (
-                  <>
-                    <button type="button" className="back-btn" onClick={() => setSelected(null)}><Icon name="back" size={18} /> All prepared work</button>
-                    <WorkDetail id={selected} titles={titles} onChanged={reload} />
-                  </>
-                ) : <div className="card"><Empty icon="spark" title="Choose prepared work to review it" /></div>}
-              </section>
-            </div>
-          </>
-        );
-      }}
-    </Show>
+    <div className={`staff-drafts${compact ? ' compact' : ''}`}>
+      {items.map((w) => (
+        <div key={w.id} className="staff-card">
+          <div className="staff-card-row">
+            <span className="staff-mark" aria-hidden="true"><Icon name="spark" size={16} /></span>
+            <span className="staff-card-text">
+              <strong>{w.title}</strong>
+              <span className="small muted">Drafted by {displayTitle(w.role_id as StaffRoleId, staff.titles)}{w.stale ? ' · sources changed' : ''}</span>
+            </span>
+            {w.action ? <ActionBadge status={w.action.status} /> : <Badge tone="pending">Draft</Badge>}
+            <button type="button" className="btn" aria-expanded={open === w.id} onClick={() => setOpen(open === w.id ? null : w.id)}>
+              {open === w.id ? 'Close' : 'Review'}
+            </button>
+          </div>
+          {open === w.id && <div className="staff-card-body"><WorkDetail id={w.id} titles={staff.titles} onChanged={staff.reload} /></div>}
+        </div>
+      ))}
+      {items.length === 0 && prepare && (
+        <div className="staff-offer">
+          <span className="staff-mark" aria-hidden="true"><Icon name="spark" size={16} /></span>
+          <span className="small muted grow">Staff can draft {prepare.label} for you to review.</span>
+          <ActionButton variant="quiet" onRun={async () => {
+            const id = await client.rpc<string>('staff_prepare', { p_kind: prepare.kind, p_target: prepare.target, p_thread: null });
+            staff.reload();
+            setOpen(id);
+          }}>Draft it</ActionButton>
+        </div>
+      )}
+    </div>
   );
 }
 
-function NoStaff({ plan }: { plan: string }) {
+/** Home: every staff draft in this club that waits on the person, with batch approval. */
+export function WaitingOnYou() {
+  const staff = useStaff();
+  const { client } = useSession();
+  const [open, setOpen] = useState<string | null>(null);
+  const [batch, setBatch] = useState<Record<string, PendingAction>>({});
+  const [result, setResult] = useState<string | null>(null);
+  if (!staff?.room) return null;
+  const r = staff.room;
+  if (!r.entitlement.staff_enabled) {
+    return (
+      <section className="card staff-plan" aria-labelledby="staff-plan">
+        <h2 id="staff-plan">Staff can do the routine work for you</h2>
+        <p className="muted">On the Staff plan, staff draft fee reminders, RSVP reminders, practice plans and announcements inside each task, and you approve them. You are on the {r.entitlement.plan === 'diy' || r.entitlement.plan === 'none' ? 'free tools' : r.entitlement.plan} plan, and every tool still works without it.</p>
+        <Notice tone="info">Plan purchase is not connected in this environment, so there is nothing to buy here.</Notice>
+      </section>
+    );
+  }
+  const waiting = r.work.filter(needsYou);
   return (
-    <section>
-      <PageHeader title="Staff Room" />
-      <div className="card">
-      <p>Staff are part of the Staff plan. You are on the {plan === 'diy' || plan === 'none' ? 'free tools' : plan} plan, and every team tool still works without it.</p>
-      <Notice tone="info">Plan purchase is not connected in this environment, so there is nothing to buy here.</Notice>
+    <section className="card flush" aria-labelledby="waiting">
+      <div className="card-head">
+        <h2 id="waiting">Waiting on you</h2>
+        <span className="muted small">{waiting.length === 0 ? 'Nothing right now' : `${waiting.length} draft${waiting.length === 1 ? '' : 's'} from staff`}</span>
       </div>
+      {result && <div className="card-pad"><Notice tone="info">{result}</Notice></div>}
+      {waiting.length === 0 ? <p className="card-pad muted small">Staff check for work on their own and put drafts on the task they belong to. Nothing is sent until you approve it.</p> : (
+        <ul className="rows waiting-list">
+          {waiting.map((w) => (
+            <li key={w.id} className="waiting-item">
+              <div className="row-item">
+                {w.action && isEditable(w.action.status as ActionStatus) ? (
+                  <input type="checkbox" className="work-check" aria-label={`Select ${w.title} to approve together`} checked={Boolean(batch[w.action.id])}
+                    onChange={async (e) => {
+                      const id = w.action!.id;
+                      if (!e.target.checked) { const { [id]: _drop, ...rest } = batch; setBatch(rest); return; }
+                      const a = await client.rpc<PendingAction>('action_get', { p_id: id });
+                      setBatch((b) => ({ ...b, [id]: a }));
+                    }} />
+                ) : <span className="work-check" aria-hidden="true" />}
+                <div className="grow">
+                  <strong>{w.title}</strong>
+                  <span className="small muted"> · {TASK_OF[w.kind] ?? 'Task'} · {when(w.updated_at)}</span>
+                </div>
+                {w.action ? <ActionBadge status={w.action.status} /> : <Badge tone="pending">Draft</Badge>}
+                <button type="button" className="btn" aria-expanded={open === w.id} onClick={() => setOpen(open === w.id ? null : w.id)}>{open === w.id ? 'Close' : 'Review'}</button>
+              </div>
+              {open === w.id && <div className="staff-card-body"><WorkDetail id={w.id} titles={staff.titles} onChanged={staff.reload} /></div>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {Object.keys(batch).length > 0 && (
+        <div className="batch card-pad" aria-live="polite">
+          <h3>Approve {Object.keys(batch).length} together</h3>
+          <ul className="plain">{Object.values(batch).map((a) => <li key={a.id}>{a.summary.effect} <span className="small muted">(version {a.revision})</span></li>)}</ul>
+          <div className="row">
+            <ActionButton variant="primary" onRun={async () => {
+              const items = Object.values(batch).map((a) => ({ id: a.id, revision: a.revision, hash: a.payload_hash }));
+              const res = await client.approveBatch(items, idempotencyKey());
+              const failed = res.results.filter((x) => !x.ok);
+              setResult(failed.length === 0 ? `Approved ${res.results.length}.` : `Approved ${res.results.length - failed.length}. ${failed.length} need attention: ${failed.map((f) => f.error).join('; ')}`);
+              setBatch({});
+              staff.reload();
+            }}>Approve these exactly as shown</ActionButton>
+            <button type="button" className="btn quiet" onClick={() => setBatch({})}>Clear</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
@@ -150,7 +166,7 @@ function NoStaff({ plan }: { plan: string }) {
 type Block = { title: string; drill: string; minutes: number; notes: string };
 type Recipient = { name: string; person_id: string };
 
-function WorkDetail({ id, titles, onChanged }: { id: string; titles: Partial<Record<StaffRoleId, string>>; onChanged: () => void }) {
+export function WorkDetail({ id, titles, onChanged }: { id: string; titles: Partial<Record<StaffRoleId, string>>; onChanged: () => void }) {
   const { client } = useSession();
   const [work, reload] = useLoad(() => client.preparedWork(id), [client, id]);
   const refresh = () => { reload(); onChanged(); };

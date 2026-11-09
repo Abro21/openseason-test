@@ -7,7 +7,7 @@ import { ApiError, type Transport } from '@openseason/api-client';
 import { checkArgs, isRpcName, SERVER_ONLY_RPCS } from '@openseason/contracts';
 import { AUTH, PERSONA_LABELS, type Persona } from '@openseason/db/src/seed-ids.js';
 import {
-  callFn, runDeliveries, runQueuedActions, runRefunds, runSandboxStaff, withIdentity,
+  callFn, runDeliveries, runQueuedActions, runRefunds, runSandboxStaff, runStaffRoutines, withIdentity,
   type Queryable, type TxRunner,
 } from '@openseason/sandbox';
 import shim from '../../../../supabase/tests/local_supabase_shim.sql?raw';
@@ -84,6 +84,7 @@ export async function openSandbox(opts: { dataDir?: string } = {}): Promise<Brow
     await runDeliveries(run);
     await runRefunds(run, { refundOutcome: 'succeeded' });
     await runSandboxStaff(run);
+    await runStaffRoutines(run);
   }
   function runWorkers(): Promise<void> {
     if (!current) {

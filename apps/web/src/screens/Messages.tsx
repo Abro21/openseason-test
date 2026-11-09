@@ -1,16 +1,19 @@
 import { ConversationRow, Message } from '@openseason/contracts';
+import { teamCan } from '@openseason/domain';
 import { useState } from 'react';
 import { z } from 'zod';
 import { useSession } from '../session';
 import { Icon } from '../icons';
+import { StaffDrafts } from '../staff';
 import { ActionButton, Badge, Empty, initials, PageHeader, Show, useLoad, when } from '../ui';
 
 type Conv = z.infer<typeof ConversationRow>;
 
 export function Messages() {
-  const { client } = useSession();
+  const { client, tenant } = useSession();
+  const tid = tenant!.id;
   const [search, setSearch] = useState('');
-  const [convs] = useLoad(async () => z.array(ConversationRow).parse(await client.rpc('my_conversations', { p_search: search || null, p_archived: false })), [client, search]);
+  const [convs] = useLoad(async () => z.array(ConversationRow).parse(await client.rpc('my_conversations', { p_tenant: tid, p_search: search || null, p_archived: false })), [client, search, tid]);
   const [open, setOpen] = useState<Conv | null>(null);
   return (
     <>
@@ -53,12 +56,17 @@ export function Messages() {
 }
 
 function Thread({ conv }: { conv: Conv }) {
-  const { client } = useSession();
+  const { client, active } = useSession();
+  const coaching = active?.kind === 'team' && active.teamId === conv.team_id && teamCan(active.role, 'message_team');
   const [msgs, reload] = useLoad(async () => z.array(Message).parse(await client.rpc('conversation_messages', { p_conversation: conv.id, p_before: null, p_limit: 50 })), [client, conv.id]);
   const [draft, setDraft] = useState('');
   return (
     <div className="card chat">
       <div className="card-head"><h2>{conv.title ?? 'Conversation'}</h2></div>
+      {conv.kind === 'team' && conv.team_id && (
+        <StaffDrafts compact match={(w) => w.kind === 'announcement' && w.team_id === conv.team_id}
+          prepare={coaching ? { kind: 'announcement', label: 'a week-ahead announcement', target: { team_id: conv.team_id } } : undefined} />
+      )}
       <div className="thread" aria-live="polite">
         <Show value={msgs} empty={(d) => d.length === 0} emptyView={<Empty icon="chat" title="No messages yet" />}>
           {(list) => list.map((m) => (

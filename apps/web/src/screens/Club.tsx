@@ -1,5 +1,6 @@
 import type { AppContext } from '@openseason/domain';
 import { useSession } from '../session';
+import { StaffDrafts, WaitingOnYou } from '../staff';
 import type { Go } from '../App';
 import { Badge, describeError, Empty, money, Notice, PageHeader, shortDate, Show, useLoad } from '../ui';
 
@@ -53,6 +54,7 @@ export function ClubOverview({ ctx, go }: { ctx: ClubContext; go: Go }) {
           <span className="stat-foot muted">Across all teams</span>
         </button>
       </section>
+      <WaitingOnYou />
     </>
   );
 }
@@ -62,6 +64,8 @@ export function ClubPayments({ ctx }: { ctx: ClubContext }) {
   return (
     <>
       <PageHeader title="Payments" subtitle={ctx.label} />
+      <StaffDrafts match={(w) => w.kind === 'fee_reminder' && w.org_id === ctx.orgId}
+        prepare={finance.state === 'ready' && finance.data.overdue_cents > 0 ? { kind: 'fee_reminder', label: 'reminders to families with overdue balances', target: { org_id: ctx.orgId } } : undefined} />
       <Show value={finance}>
         {(f) => (
           <section className="card flush" aria-labelledby="bal">
@@ -98,6 +102,8 @@ export function ClubCompliance({ ctx }: { ctx: ClubContext }) {
   return (
     <>
       <PageHeader title="Compliance" subtitle="The club's own records. OpenSeason does not certify SafeSport or COPPA compliance." />
+      <StaffDrafts match={(w) => w.kind === 'certification_nudge' && w.org_id === ctx.orgId}
+        prepare={comp.state === 'ready' && comp.data.certifications.some((x) => x.gap) ? { kind: 'certification_nudge', label: 'nudges to staff with missing or expiring certifications', target: { org_id: ctx.orgId } } : undefined} />
       <Show value={comp}>
         {(c) => (
           <div className="stack-lg">

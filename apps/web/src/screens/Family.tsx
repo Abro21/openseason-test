@@ -13,9 +13,10 @@ interface Form { document_id: string; athlete_id: string; athlete: string; title
 
 /** Home for a family member or athlete: what needs them, then what's coming up. */
 export function FamilyHome({ ctx, go }: { ctx: Extract<AppContext, { kind: 'family' | 'athlete' }>; go: Go }) {
-  const { client } = useSession();
-  const [forms] = useLoad(() => client.rpc<Form[]>('my_forms'), [client]);
-  const [fees] = useLoad(() => (ctx.kind === 'family' ? client.myFees() : Promise.resolve([])), [client, ctx.kind]);
+  const { client, tenant } = useSession();
+  const tid = tenant!.id;
+  const [forms] = useLoad(() => client.rpc<Form[]>('my_forms', { p_tenant: tid }), [client, tid]);
+  const [fees] = useLoad(() => (ctx.kind === 'family' ? client.myFees(tid) : Promise.resolve([])), [client, ctx.kind, tid]);
   const unsigned = forms.state === 'ready' ? forms.data.filter((f) => f.athlete_id === ctx.athleteId && !f.signed_at).length : 0;
   const due = fees.state === 'ready'
     ? fees.data.flatMap((f) => f.installments.filter((i) => i.status !== 'paid' && !i.pending).map((i) => ({ ...i, currency: f.currency }))).sort((a, b) => a.due_on.localeCompare(b.due_on))
@@ -106,8 +107,9 @@ export function FamilySchedule({ ctx }: { ctx: FamilyContext }) {
 }
 
 export function FamilyForms({ athleteId }: { athleteId: string }) {
-  const { client, contexts } = useSession();
-  const [forms, reload] = useLoad(() => client.rpc<Form[]>('my_forms'), [client]);
+  const { client, person, tenant } = useSession();
+  const tid = tenant!.id;
+  const [forms, reload] = useLoad(() => client.rpc<Form[]>('my_forms', { p_tenant: tid }), [client, tid]);
   const [typed, setTyped] = useState('');
   return (
     <Show value={forms}>
@@ -132,7 +134,7 @@ export function FamilyForms({ athleteId }: { athleteId: string }) {
                     <p className="doc-body">{f.body}</p>
                     <div className="field">
                       <label htmlFor={`sig-${f.document_id}`}>Type your full name to sign</label>
-                      <input id={`sig-${f.document_id}`} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={contexts?.person?.display_name ?? ''} />
+                      <input id={`sig-${f.document_id}`} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={person?.display_name ?? ''} />
                     </div>
                     <ActionButton variant="primary" disabled={typed.trim().length < 2}
                       onRun={async () => { await client.rpc('document_sign', { p_document: f.document_id, p_athlete: f.athlete_id, p_typed_name: typed.trim(), p_document_version: f.version }); setTyped(''); reload(); }}>
@@ -151,10 +153,11 @@ export function FamilyForms({ athleteId }: { athleteId: string }) {
 
 const FEE_STATUS: Record<string, string> = { paid: 'Paid', partially_paid: 'Partly paid', open: 'Open', overdue: 'Overdue' };
 
-/** Every fee this person is responsible for, across their athletes. */
+/** Every fee this person is responsible for in the active club, across their athletes. */
 export function FamilyFees() {
-  const { client } = useSession();
-  const [fees, reload] = useLoad(() => client.myFees(), [client]);
+  const { client, tenant } = useSession();
+  const tid = tenant!.id;
+  const [fees, reload] = useLoad(() => client.myFees(tid), [client, tid]);
   const [checkout, setCheckout] = useState<string | null>(null);
   return (
     <>

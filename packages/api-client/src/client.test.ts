@@ -35,7 +35,7 @@ describe('OpenSeasonClient', () => {
 
   it('rejects a response that does not match the contract', async () => {
     const c = new OpenSeasonClient(fake(() => ({ clubs: 'nope' })));
-    await expect(c.contexts()).rejects.toThrow(/unexpected response from my_contexts/);
+    await expect(c.contexts('00000000-0000-4000-8000-000000000401')).rejects.toThrow(/unexpected response from my_contexts/);
   });
 });
 

@@ -43,21 +43,21 @@ describe('journeys', () => {
 
       await t.as('quinn');
       await t.rpc('rsvp_set', { p_event: EVENTS.blueGame, p_athlete: kid, p_status: 'yes' });
-      for (const f of (await t.rpc('my_forms')).filter((x: any) => !x.signed_at)) {
+      for (const f of (await t.rpc('my_forms', { p_tenant: ORGS.frontRange })).filter((x: any) => !x.signed_at)) {
         await t.rpc('document_sign', { p_document: f.document_id, p_athlete: kid, p_typed_name: 'Quinn Newcomer', p_document_version: f.version });
       }
-      expect((await t.rpc('my_forms')).every((x: any) => x.signed_at)).toBe(true);
+      expect((await t.rpc('my_forms', { p_tenant: ORGS.frontRange })).every((x: any) => x.signed_at)).toBe(true);
 
       // Director bills the team; Quinn pays the first installment in the sandbox.
       await t.as('dana');
       await t.rpc('fee_schedule_create', { p_org: ORGS.frontRange, p_team: TEAMS.u12Blue, p_name: 'Tournament', p_kind: 'ad_hoc', p_amount_cents: 6000, p_installments: 2, p_first_due: '2026-12-01' });
       await t.as('quinn');
-      const [fee] = await t.rpc('my_fees');
+      const [fee] = await t.rpc('my_fees', { p_tenant: ORGS.frontRange });
       const pay = await t.rpc('payment_start', { p_installment: fee.installments[0].id, p_idempotency_key: k('quinn-pay') });
       await t.asService();
       await t.rpc('payment_apply_provider_event', { p_provider: 'sandbox', p_event_id: 'evt_quinn', p_provider_ref: pay.provider_ref, p_outcome: 'succeeded' }, 'app');
       await t.as('quinn');
-      const [after] = await t.rpc('my_fees');
+      const [after] = await t.rpc('my_fees', { p_tenant: ORGS.frontRange });
       expect(after).toMatchObject({ status: 'partially_paid', paid_cents: 3000 });
       expect(after.receipts[0]).toMatchObject({ status: 'succeeded', amount_cents: 3000 });
     }));
@@ -87,7 +87,7 @@ describe('journeys', () => {
       await t.rpc('process_queued_actions', { p_limit: 10 }, 'app');
 
       await t.as('pat');
-      const convs = await t.rpc('my_conversations', { p_search: 'Casey', p_archived: false });
+      const convs = await t.rpc('my_conversations', { p_tenant: ORGS.frontRange, p_search: 'Casey', p_archived: false });
       expect(convs.length).toBe(1);
       await t.rpc('rsvp_set', { p_event: EVENTS.blueGame, p_athlete: ATHLETES.mia, p_status: 'yes' });
 
@@ -142,7 +142,7 @@ describe('journeys', () => {
       const sched = await t.rpc('team_schedule', { p_team: TEAMS.u15Red, ...window() });
       expect(sched.find((e: any) => e.id === EVENTS.redGame).location).toBeTruthy();
       await t.rpc('rsvp_set', { p_event: EVENTS.redGame, p_athlete: ATHLETES.leo, p_status: 'yes' });
-      expect(await t.fails('dm_start', { p_other: PEOPLE.jordan })).toMatch(/under 18/);
+      expect(await t.fails('dm_start', { p_other: PEOPLE.jordan, p_tenant: ORGS.frontRange })).toMatch(/under 18/);
       await t.as('jordan');
       const poll = await t.rpc('poll_create', { p_team: TEAMS.u15Red, p_kind: 'captain_election', p_question: 'Who should captain?', p_options: j(['Leo', 'Other']), p_closes: new Date(Date.now() + 86400e3) });
       await t.as('leo');

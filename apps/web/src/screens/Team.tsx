@@ -2,6 +2,7 @@ import type { ScheduleEvent } from '@openseason/contracts';
 import { teamCan, type AppContext } from '@openseason/domain';
 import { useState } from 'react';
 import { useSession } from '../session';
+import { StaffDrafts, WaitingOnYou } from '../staff';
 import { ActionButton, Badge, DateTile, Empty, PageHeader, Show, useLoad, when } from '../ui';
 
 type TeamContext = Extract<AppContext, { kind: 'team' }>;
@@ -19,10 +20,13 @@ export function TeamSchedule({ ctx }: { ctx: TeamContext }) {
   return (
     <>
       <PageHeader title={ctx.label} subtitle={`${ROLE_LABEL[ctx.role]} · schedule for the next two months`} />
+      <WaitingOnYou />
       <section className="card flush" aria-labelledby="team-sched">
         <div className="card-head"><h2 id="team-sched">Coming up</h2></div>
         <Show value={events} empty={(d) => d.length === 0} emptyView={<Empty icon="calendar" title="Nothing scheduled">Games and practices for the next two months show up here.</Empty>}>
-          {(list) => (
+          {(list) => {
+            const nextPractice = list.find((x) => x.kind === 'practice' && new Date(x.starts_at) > new Date())?.id;
+            return (
             <ul className="events">
               {list.map((e) => (
                 <li key={e.id} className="event-wrap">
@@ -48,6 +52,14 @@ export function TeamSchedule({ ctx }: { ctx: TeamContext }) {
                       {e.kind === 'game' ? 'Score' : 'Attendance'}
                     </button>
                   </div>
+                  {teamCan(ctx.role, 'message_team') && (
+                    <StaffDrafts compact match={(w) => w.kind === 'attendance_reminder' && w.event_id === e.id}
+                      prepare={e.kind === 'game' && e.rsvp_summary && e.rsvp_summary.no_response > 0 ? { kind: 'attendance_reminder', label: 'an RSVP reminder for families who have not answered', target: { event_id: e.id } } : undefined} />
+                  )}
+                  {e.kind === 'practice' && e.id === nextPractice && teamCan(ctx.role, 'plan_practice') && (
+                    <StaffDrafts compact match={(w) => w.kind === 'practice_plan' && w.team_id === ctx.teamId}
+                      prepare={{ kind: 'practice_plan', label: 'a plan for this practice', target: { team_id: ctx.teamId } }} />
+                  )}
                   {open === e.id && (
                     <div className="event-panel">
                       {e.kind === 'game'
@@ -58,7 +70,8 @@ export function TeamSchedule({ ctx }: { ctx: TeamContext }) {
                 </li>
               ))}
             </ul>
-          )}
+            );
+          }}
         </Show>
       </section>
     </>

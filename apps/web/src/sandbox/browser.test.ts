@@ -2,7 +2,7 @@
 // The in-browser sandbox runs the real migrations and seed in PGlite. These
 // tests drive it through the same transport the app uses.
 import { ApiError, OpenSeasonClient } from '@openseason/api-client';
-import { TEAMS } from '@openseason/db/src/seed-ids.js';
+import { ORGS, TEAMS } from '@openseason/db/src/seed-ids.js';
 import { SANDBOX_STAFF_NOTE } from '@openseason/sandbox';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openSandbox, type BrowserSandbox } from './browser';
@@ -20,14 +20,16 @@ describe('in-browser sandbox', () => {
   it('lists the synthetic people and refuses unknown or missing sessions', async () => {
     expect(sb.personas().map((p) => p.id)).toContain('pat');
     expect(() => sb.tokenFor('root')).toThrow();
-    await expect(as(null).rpc('my_contexts')).rejects.toMatchObject({ kind: 'unauthenticated' });
-    await expect(new OpenSeasonClient(sb.transport(() => 'sandbox:00000000-0000-4000-8000-000000000999')).rpc('my_contexts'))
+    await expect(as(null).rpc('my_tenants')).rejects.toMatchObject({ kind: 'unauthenticated' });
+    await expect(new OpenSeasonClient(sb.transport(() => 'sandbox:00000000-0000-4000-8000-000000000999')).rpc('my_tenants'))
       .rejects.toBeInstanceOf(ApiError);
   });
 
   it('applies row-level security per person', async () => {
-    const pat = await as('pat').contexts();
+    const pat = await as('pat').contexts(ORGS.frontRange);
     expect(pat.family.map((f) => f.label).sort()).toEqual(['Leo L.', 'Mia L.']);
+    expect((await as('pat').contexts(ORGS.mesaValley)).family.map((f) => f.label)).toEqual(['Nora L.']);
+    await expect(as('olivia').contexts(ORGS.frontRange)).rejects.toMatchObject({ kind: 'forbidden' });
     const from = new Date().toISOString();
     const to = new Date(Date.now() + 86400e3).toISOString();
     await expect(as('quinn').rpc('team_schedule', { p_team: TEAMS.u12Blue, p_from: from, p_to: to })).rejects.toMatchObject({ kind: 'forbidden', code: '42501' });
@@ -35,14 +37,22 @@ describe('in-browser sandbox', () => {
 
   it('pays an installment through the sandbox checkout', async () => {
     const pat = as('pat');
-    const fees = await pat.rpc<any[]>('my_fees');
+    const fees = await pat.rpc<any[]>('my_fees', { p_tenant: ORGS.frontRange });
     const inst = fees[0].installments.find((i: any) => i.status !== 'paid');
     const start = await pat.rpc<any>('payment_start', { p_installment: inst.id, p_idempotency_key: 'sandbox-test-pay-1' });
     expect(start.checkout_url).toBe(`#sandbox-checkout/${start.provider_ref}`);
     expect((await sb.checkout(start.provider_ref))?.status).toBe('pending');
     await sb.completeCheckout(start.provider_ref, 'succeeded');
-    const after = (await as('pat').rpc<any[]>('my_fees')).find((f) => f.invoice_id === fees[0].invoice_id);
+    const after = (await as('pat').rpc<any[]>('my_fees', { p_tenant: ORGS.frontRange })).find((f) => f.invoice_id === fees[0].invoice_id);
     expect(after.paid_cents).toBe(fees[0].paid_cents + inst.amount_cents);
+  });
+
+  it('has staff prepare routine drafts on their own, inside each club, sending nothing', async () => {
+    await sb.runWorkers();
+    const room = await as('casey').staffRoom(ORGS.frontRange);
+    const kinds = new Set(room.work.map((w) => w.kind));
+    expect(kinds.has('attendance_reminder')).toBe(true);
+    expect(room.work.every((w) => !w.action || ['proposed', 'in_review'].includes(w.action.status))).toBe(true);
   });
 
   it('runs staff work end to end: prepare, propose, approve, send once through the sandbox', async () => {

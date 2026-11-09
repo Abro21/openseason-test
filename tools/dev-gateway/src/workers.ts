@@ -9,3 +9,4 @@ export const runQueuedActions = (pool: pg.Pool, limit?: number) => core.runQueue
 export const runDeliveries = (pool: pg.Pool, limit?: number) => core.runDeliveries(pgRunner(pool), limit);
 export const runRefunds = (pool: pg.Pool, cfg: core.WorkerConfig, limit?: number) => core.runRefunds(pgRunner(pool), cfg, limit);
 export const runSandboxStaff = (pool: pg.Pool, limit?: number) => core.runSandboxStaff(pgRunner(pool), limit);
+export const runStaffRoutines = (pool: pg.Pool) => core.runStaffRoutines(pgRunner(pool));

@@ -4,36 +4,36 @@ Start the stack as in the [README](../README.md) (`pnpm db:reset`, `pnpm dev:gat
 
 Run `pnpm db:reset` first if you want a clean seed; the gateway's workers process queued sends every two seconds.
 
-## 1. Parent: Pat Parent
+## 1. Parent in two clubs: Pat Parent
 
-1. Sign in as **Pat Parent**. "Acting as" lists Family for Mia (U12 Blue) and Leo (U15 Red).
-2. On Home, the schedule shows both children's events. Set Mia's RSVP for the next practice.
+1. Sign in as **Pat Parent**. The Role switcher shows Parent; the Child switcher lists Leo and Mia at Front Range FC and Nora at Mesa Valley SC.
+2. On Home, the schedule shows the chosen child's events. Set Mia's RSVP for the next practice.
 3. Under Forms, sign the current waiver by typing the name. Older versions cannot be signed.
-4. Under Fees, press **Pay** on an open fee. The sandbox checkout page opens and says no card is collected. Complete it; the fee shows as paid after the signed sandbox webhook lands.
-5. Point out what Pat cannot see: other families' RSVPs and fees, and anything from Mesa Valley SC.
+4. Under Payments, press **Pay** on an open fee. The sandbox checkout page opens and says no card is collected. Complete it; the fee shows as paid after the signed sandbox webhook lands.
+5. Switch the Child to Nora. Payments and Forms now show only Mesa Valley's dues and waiver; nothing from Front Range is shown, and the reverse holds too.
 
 ## 2. Coach: Casey Coach
 
 1. Sign in as **Casey Coach** (head coach, U12 Blue, Staff plan).
-2. Home: the RSVP summary, attendance (present, late, absent, excused) and scoring with a version check.
-3. Open **Staff Room**. Prepare a **Practice plan**. The Practice Prep Coach drafts a plan; open it, edit it and save it through the normal planner.
-4. Prepare an **RSVP reminder for next game**. Open the draft: recipients can be removed but not added. Propose it.
-5. Approve it. The approval carries the exact revision and hash. The worker sends once to each family that has not replied, as sandbox deliveries.
-6. Open the staff thread and post a message. The reply is a fixed sandbox response and says so: no AI provider is configured.
+2. Schedule: the RSVP summary, attendance (present, late, absent, excused) and scoring with a version check.
+3. Staff check for work on their own. Under the next game, an **RSVP reminder** draft appears; under the next practice, a **practice plan**. "Waiting on you" at the top lists every draft.
+4. Press **Review** on the RSVP reminder: recipients can be removed but not added. Approve it. The approval carries the exact revision and hash, and the worker sends once to each family that has not replied, as sandbox deliveries.
+5. Open the team conversation in Messages: the week-ahead announcement draft sits there, ready to review.
+6. In any draft, open **Talk to** and post a message. The reply is a fixed sandbox response and says so: no AI provider is configured.
 
 ## 3. Director: Dana Director
 
-1. Sign in as **Dana Director** (club owner, Front Range FC).
-2. Home: finance summary across teams and the compliance view with certification gaps. The screen states that it does not certify anything.
-3. **Staff Room**: press **Have staff check for work**, or prepare **Overdue fee reminders** and **Certification nudges** directly.
-4. Select several items and approve them as a batch. Each item reports its own result, so a stale item fails without blocking the rest.
+1. Sign in as **Dana Director** (club owner, Front Range FC). Role: Club Director.
+2. Home: finance summary and compliance at a glance, then "Waiting on you". The compliance screen states that it does not certify anything.
+3. Payments shows the overdue-fee reminder draft above the balances; Compliance shows certification nudges above the certifications.
+4. On Home, tick several drafts and approve them together. Each item reports its own result, so a stale item fails without blocking the rest.
 5. Note that Dana cannot read safeguarding issue reports: only **Sam Safeguard** holds that grant.
 
-## 4. Context switching: Jordan Multi
+## 4. Several roles: Jordan Multi and Olivia Other
 
-1. Sign in as **Jordan Multi** (head coach U15 Red, guardian of Ava on U12 Blue, free tools only).
-2. Switch "Acting as" between Coach: U15 Red and Family: Ava. Each switch clears the cached data, and the Staff Room tab only appears in the coach context.
-3. In the coach context, the Staff Room shows the no-plan state. Every DIY tool (schedule, attendance, scoring, messages) still works.
+1. Sign in as **Jordan Multi** (head coach U15 Red, guardian of Ava on U12 Blue, free tools only). The Role switcher offers Coach and Parent. Each switch clears the cached data.
+2. As Coach, Home explains the Staff plan once. Every tool (schedule, attendance, scoring, messages) works the same without it, and no staff drafts appear.
+3. Sign in as **Olivia Other**: Club Director and Coach at Mesa Valley SC. Nothing from Front Range FC shows.
 
 ## 5. Staff approval edge cases (any coach with a plan)
 

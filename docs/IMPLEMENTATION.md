@@ -27,14 +27,15 @@ Status words:
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | Shared tokens (colour, type, space, radius, motion), light and dark | Implemented | `packages/tokens`, 10 unit tests; web CSS variables via `apps/web/src/theme.ts`, mobile via `apps/mobile/src/ui.tsx` |
-| Accessible components (labels, focus, 44pt targets, status roles) | Partial | axe checks on Staff Room and sign-in in `apps/web/src/app.test.tsx` (colour-contrast rule disabled under jsdom, so contrast is not verified); mobile buttons are 44pt |
+| Accessible components (labels, focus, 44pt targets, status roles) | Partial | axe checks on the coach home with an open staff draft, and on sign-in, in `apps/web/src/app.test.tsx` (colour-contrast rule disabled under jsdom, so contrast is not verified); mobile buttons are 44pt |
 | Figma parity | Blocked | Figma unreadable |
 
 ### §4 Identity, contexts and claims
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
-| One person, many contexts (parent, coach, director, athlete, fan) with an "Acting as" switch | Implemented | `my_contexts`; identity test "derives every context a multi-role person holds"; web and mobile context pickers |
+| One person, many roles (club director, coach, parent, player, fan), in one club or several, as in the Lovable prototype | Implemented | `my_tenants` lists every club with the person's roles and scopes in each; tenancy test "lists every club a person belongs to, with their roles and scopes in each" (Jordan coach and parent, Olivia director and coach, Pat parent in two clubs); web Role switcher plus a second switcher for the club, team or child, like the prototype's ModeSwitcher and team/child switchers; mobile role and club picker |
+| Each club is its own tenant: data is read inside one club at a time, and a team without a club is its own tenant | Implemented | migration `20261109000600_tenancy.sql`: `app.require_tenant` refuses a club the person does not belong to; `my_contexts`, `my_fees`, `my_forms`, `my_conversations`, `dm_start`, `staff_room` and `staff_run_triggers` all take the club; tenancy tests "refuses a club the person does not belong to, whatever id the client sends", "keeps conversations in the club they belong to"; the client cache is keyed by person, club and role, so switching never shows another club's data. Direct messages created before this migration have no club and are not listed |
 | Claims need a valid invite token plus staff approval; email match is only a hint | Implemented | identity tests for token, conflict, self-approval, rate limit; web `Claim` screen |
 | Under-13 athletes inactive until verifiable guardian consent | Sandboxed | sandbox provider callback records `provider_verified`; identity test; real provider is policy question 8 |
 | Revoking access takes effect immediately, including fan follows | Implemented | identity tests "removes access as soon as a grant is revoked", "revoking a guardian also ends the fan follows" |
@@ -53,7 +54,7 @@ Status words:
 | Coach | Attendance | Implemented | `attendance_record`; web Team screen |
 | Coach | Live scoring with delegation and stale-device rejection | Implemented | schedule test; web Scoring, mobile Scorer |
 | Coach | RSVP summary | Implemented | test "gives staff an RSVP summary"; web Team screen |
-| Coach | Practice planning | Implemented | `practice_plan_save` / `practice_plan_get`; Staff Room plan editor |
+| Coach | Practice planning | Implemented | `practice_plan_save` / `practice_plan_get`; plan editor opens from the practice on the coach's schedule |
 | Director | Finance summary, offline payments with audit | Implemented | `org_finance_summary`, test "requires finance permission to record an offline payment"; web Club screen |
 | Director | Compliance and certification gaps | Implemented | test "shows the director certification gaps"; web Club screen states it does not certify anything |
 | Director | Tryouts from signup to accepted offer | Partial | journey and schedule tests; no client screen |
@@ -75,7 +76,7 @@ Status words:
 | Billing | Card processing fee treatment | Blocked | module supports payer or club pays; no rate configured (policy question 4) |
 | Billing | Imports, scholarships, emergency and medical fields | Deferred | not modelled (policy question 10) |
 
-### §6 Staff Room
+### §6 Staff (prepared work inside each task)
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
@@ -85,7 +86,8 @@ Status words:
 | Durable, deduplicated, owner-private prepared work | Implemented | actions test |
 | Staff thread with paging | Implemented | actions test; web `StaffThread` "Fetch more" |
 | Staff replies | Sandboxed | fixed sandbox reply labelled as such; no AI provider configured |
-| Split desk on web, list and detail on mobile | Implemented | web `.desk` grid; mobile Staff list → WorkScreen |
+| Staff work happens inside each task, not in a separate section | Implemented | web `apps/web/src/staff.tsx`: overdue-fee reminders on Payments, certification nudges on Compliance, an RSVP reminder on the game it is for and a practice plan on the next practice (Schedule), the week-ahead announcement in the team conversation (Messages), and "Waiting on you" with batch approval on the club and coach home; app test "puts the RSVP reminder on the game it is for, not in a separate section"; mobile shows the same drafts on Home and under each event |
+| Staff look for work on their own, as the person, inside each club, at most hourly, drafts only | Sandboxed | `runStaffRoutines` in `packages/sandbox` runs in the gateway loop and the in-browser sandbox; gateway test "runs staff routines as each planholder, inside each club, as drafts only"; sandbox test "has staff prepare routine drafts on their own" |
 | Losing the Staff plan keeps every DIY record and tool | Implemented | actions test "re-checks the staff plan at execution"; DIY RPCs have no entitlement check |
 | Staff plan pricing and purchase | Blocked | entitlement only, no price or purchase flow (policy question 5) |
 

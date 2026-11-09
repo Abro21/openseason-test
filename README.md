@@ -20,7 +20,7 @@ Club management for youth sports (free DIY tools for clubs, teams and families) 
 | `packages/db` | Seed ids and the database policy/journey test suite |
 | `packages/sandbox` | Database identity and sandbox workers shared by the dev gateway and the in-browser sandbox |
 | `tools/dev-gateway` | Local-only HTTP gateway: persona sign-in, per-request DB identity, sandbox checkout and webhooks, sandbox delivery/refund workers, fixed sandbox staff replies |
-| `apps/web` | React + Vite web app (Staff Room split desk, family, coach, club, messages) |
+| `apps/web` | React + Vite web app (role and club switchers; family, coach, club and messages, with staff drafts inside each task) |
 | `apps/mobile` | Expo React Native app with native screens |
 
 ## Run it locally

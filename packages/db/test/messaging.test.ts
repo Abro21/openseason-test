@@ -37,17 +37,17 @@ describe('direct messages', () => {
   it('never opens a private conversation between an adult and a minor', () =>
     tx(async (t) => {
       await t.as('jordan');
-      expect(await t.fails('dm_start', { p_other: PEOPLE.leo })).toMatch(/under 18/);
+      expect(await t.fails('dm_start', { p_other: PEOPLE.leo, p_tenant: ORGS.frontRange })).toMatch(/under 18/);
       await t.as('leo');
-      expect(await t.fails('dm_start', { p_other: PEOPLE.jordan })).toMatch(/under 18/);
+      expect(await t.fails('dm_start', { p_other: PEOPLE.jordan, p_tenant: ORGS.frontRange })).toMatch(/under 18/);
     }));
 
   it('lets adults who share a team message each other, and nobody else', () =>
     tx(async (t) => {
       await t.as('pat');
-      const c = await t.rpc('dm_start', { p_other: PEOPLE.casey });
-      expect(await t.rpc('dm_start', { p_other: PEOPLE.casey })).toBe(c);
-      expect(await t.fails('dm_start', { p_other: PEOPLE.olivia })).toMatch(/share a team/);
+      const c = await t.rpc('dm_start', { p_other: PEOPLE.casey, p_tenant: ORGS.frontRange });
+      expect(await t.rpc('dm_start', { p_other: PEOPLE.casey, p_tenant: ORGS.frontRange })).toBe(c);
+      expect(await t.fails('dm_start', { p_other: PEOPLE.olivia, p_tenant: ORGS.frontRange })).toMatch(/share a team/);
       await t.rpc('message_post', { p_conversation: c, p_body: 'Can Mia leave early Thursday?' });
       await t.as('riley');
       expect(await t.fails('conversation_messages', { p_conversation: c })).toMatch(/not allowed/);

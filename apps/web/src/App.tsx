@@ -1,4 +1,4 @@
-import { contextKey, type AppContext } from '@openseason/domain';
+import type { AppContext } from '@openseason/domain';
 import { useEffect, useState } from 'react';
 import { Icon, type IconName } from './icons';
 import { SandboxCheckout } from './sandbox/Checkout';
@@ -7,15 +7,18 @@ import { ClubCompliance, ClubOverview, ClubPayments } from './screens/Club';
 import { FamilyFees, FamilyForms, FamilyHome, FamilySchedule } from './screens/Family';
 import { Messages } from './screens/Messages';
 import { SignIn } from './screens/SignIn';
-import { StaffRoom } from './screens/StaffRoom';
 import { TeamRoster, TeamSchedule } from './screens/Team';
-import { getSandbox, SANDBOX, useSession } from './session';
+import { getSandbox, SANDBOX, scopeKey, useSession, type Role } from './session';
+import { StaffProvider } from './staff';
 import { initials, PageHeader } from './ui';
 
-export type Tab = 'home' | 'payments' | 'forms' | 'roster' | 'compliance' | 'staff' | 'messages' | 'join';
+export type Tab = 'home' | 'payments' | 'forms' | 'roster' | 'compliance' | 'messages' | 'join';
 export type Go = (tab: Tab) => void;
 
-const KIND_LABEL: Record<AppContext['kind'], string> = { club: 'Club', team: 'Coach', family: 'Family', athlete: 'Me', fan: 'Following' };
+/** Role names as in the prototype's mode switcher. */
+const ROLE_LABEL: Record<Role, string> = { club: 'Club Director', team: 'Coach', family: 'Parent', athlete: 'Player', fan: 'Fan' };
+/** What the second switcher picks inside the role. */
+const SCOPE_LABEL: Record<Role, string> = { club: 'Club', team: 'Team', family: 'Child', athlete: 'Profile', fan: 'Following' };
 
 interface NavItem { tab: Tab; label: string; icon: IconName }
 
@@ -23,10 +26,9 @@ interface NavItem { tab: Tab; label: string; icon: IconName }
 function navFor(ctx: AppContext | null): NavItem[] {
   const home: NavItem = { tab: 'home', label: 'Home', icon: 'home' };
   const messages: NavItem = { tab: 'messages', label: 'Messages', icon: 'chat' };
-  const staff: NavItem = { tab: 'staff', label: 'Staff Room', icon: 'spark' };
   switch (ctx?.kind) {
-    case 'club': return [home, { tab: 'payments', label: 'Payments', icon: 'card' }, { tab: 'compliance', label: 'Compliance', icon: 'shield' }, staff, messages];
-    case 'team': return [home, { tab: 'roster', label: 'Roster', icon: 'users' }, staff, messages];
+    case 'club': return [home, { tab: 'payments', label: 'Payments', icon: 'card' }, { tab: 'compliance', label: 'Compliance', icon: 'shield' }, messages];
+    case 'team': return [{ ...home, label: 'Schedule', icon: 'calendar' }, { tab: 'roster', label: 'Roster', icon: 'users' }, messages];
     case 'family': return [home, { tab: 'payments', label: 'Payments', icon: 'card' }, { tab: 'forms', label: 'Forms', icon: 'file' }, messages];
     case 'athlete': return [home, { tab: 'forms', label: 'Forms', icon: 'file' }, messages];
     default: return [home, messages];
@@ -42,7 +44,9 @@ export function App() {
   const ctx = s.active;
   const nav = navFor(ctx);
   const current = tab === 'join' || nav.some((n) => n.tab === tab) ? tab : 'home';
-  const name = s.contexts?.person?.display_name ?? '';
+  const name = s.person?.display_name ?? '';
+  const inRole = ctx ? s.scopes.filter((x) => x.ctx.kind === ctx.kind) : [];
+  const manyClubs = (s.tenants?.length ?? 0) > 1;
 
   return (
     <div className="shell">
@@ -50,15 +54,27 @@ export function App() {
       <aside className="sidebar">
         <div className="sidebar-top">
           <span className="brand">Open<span>Season</span></span>
-          {s.choices.length > 0 && ctx && (
-            <div className="switcher">
-              <label htmlFor="ctx">Acting as</label>
-              <select id="ctx" value={contextKey(ctx)} onChange={(e) => {
-                const next = s.choices.find((c) => contextKey(c) === e.target.value);
-                if (next) s.choose(next);
-              }}>
-                {s.choices.map((c) => <option key={contextKey(c)} value={contextKey(c)}>{KIND_LABEL[c.kind]}: {c.label}</option>)}
-              </select>
+          {ctx && s.tenant && (
+            <div className="switchers">
+              <div className="switcher">
+                <label htmlFor="role">Role</label>
+                <select id="role" value={ctx.kind} onChange={(e) => s.chooseRole(e.target.value as Role)}>
+                  {s.roles.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                </select>
+              </div>
+              <div className="switcher">
+                <label htmlFor="scope">{SCOPE_LABEL[ctx.kind]}</label>
+                <select id="scope" value={scopeKey({ tenant: s.tenant, ctx })} onChange={(e) => {
+                  const next = inRole.find((x) => scopeKey(x) === e.target.value);
+                  if (next) s.choose(next);
+                }}>
+                  {inRole.map((x) => (
+                    <option key={scopeKey(x)} value={scopeKey(x)}>{x.ctx.label}{manyClubs && x.ctx.kind !== 'club' ? ` · ${x.tenant.name}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              {ctx.kind !== 'club' && <p className="club-line small"><span className="club-dot" aria-hidden="true" />{s.tenant.name}</p>}
+              <button type="button" className="add-role" onClick={() => setTab('join')}><Icon name="plus" size={16} /> Add another role</button>
             </div>
           )}
         </div>
@@ -77,16 +93,15 @@ export function App() {
       </aside>
       <div className="content">
         <SandboxStrip />
-        <main id="main" key={ctx ? contextKey(ctx) : 'none'}>
-          {!s.contexts && <p className="loading muted" role="status">Loading…</p>}
-          {s.contexts && !ctx && current !== 'messages' && (
+        <main id="main" key={ctx && s.tenant ? scopeKey({ tenant: s.tenant, ctx }) : 'none'}>
+          {!s.tenants && <p className="loading muted" role="status">Loading…</p>}
+          {s.tenants && !ctx && (
             <>
               <PageHeader title={`Welcome${name ? `, ${name.split(' ')[0]}` : ''}`} subtitle="You're signed in, but not connected to a club, team or family yet." />
               <Claim />
             </>
           )}
-          {ctx && <Page ctx={ctx} tab={current} go={setTab} />}
-          {!ctx && current === 'messages' && <Messages />}
+          {ctx && s.tenant && <StaffProvider key={s.tenant.id} tenantId={s.tenant.id}><Page ctx={ctx} tab={current} go={setTab} /></StaffProvider>}
         </main>
       </div>
     </div>
@@ -95,7 +110,6 @@ export function App() {
 
 function Page({ ctx, tab, go }: { ctx: AppContext; tab: Tab; go: Go }) {
   if (tab === 'messages') return <Messages />;
-  if (tab === 'staff') return <StaffRoom ctx={ctx} />;
   if (tab === 'join') return <><PageHeader title="Join a team" subtitle="Use the invite code from your email." /><Claim /></>;
   switch (ctx.kind) {
     case 'club':
@@ -107,7 +121,7 @@ function Page({ ctx, tab, go }: { ctx: AppContext; tab: Tab; go: Go }) {
     case 'fan':
       return <><PageHeader title={`Following ${ctx.label}`} subtitle="Public schedule and scores." /><FamilySchedule ctx={ctx} /></>;
     default:
-      if (tab === 'payments' && ctx.kind === 'family') return <><PageHeader title="Payments" subtitle="Fees for every athlete in your family." /><FamilyFees /></>;
+      if (tab === 'payments' && ctx.kind === 'family') return <><PageHeader title="Payments" subtitle="Fees for your family in this club." /><FamilyFees /></>;
       if (tab === 'forms') return <><PageHeader title="Forms" subtitle={`Waivers and forms for ${ctx.label}.`} /><FamilyForms athleteId={ctx.athleteId} /></>;
       return <FamilyHome ctx={ctx} go={go} />;
   }

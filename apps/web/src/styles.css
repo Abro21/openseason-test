@@ -50,6 +50,11 @@ main { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: var(--o
   background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size: 5px 5px; background-repeat: no-repeat;
 }
 .switcher select option { color: initial; background: initial; }
+.switchers { display: flex; flex-direction: column; gap: var(--os-space-3); }
+.club-line { display: flex; align-items: center; gap: var(--os-space-2); margin: 0; color: var(--os-chrome-text-muted); }
+.club-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--os-accent); flex: none; }
+.add-role { display: inline-flex; align-items: center; gap: var(--os-space-1); align-self: flex-start; min-height: 36px; padding: 0; border: 0; background: none; color: var(--os-chrome-text-muted); font-weight: 600; font-size: var(--os-type-label-size); cursor: pointer; }
+.add-role:hover { color: var(--os-chrome-text); }
 
 .nav { display: flex; flex-direction: column; gap: var(--os-space-1); }
 .nav-item {
@@ -289,7 +294,24 @@ details.card.disclosure[open] { padding-bottom: var(--os-space-5); }
 .stat-value { font-size: 2rem; line-height: 1.2; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .stat-value.warn { color: var(--os-warning); }
 
-/* ---------- List + detail desks (Staff Room, Messages) ---------- */
+/* ---------- Staff drafts, shown on the task they belong to ---------- */
+.staff-drafts { display: flex; flex-direction: column; gap: var(--os-space-2); }
+.staff-drafts.compact { margin: 0 var(--os-space-5) var(--os-space-4); }
+.chat > .staff-drafts.compact { margin: var(--os-space-3) var(--os-space-5) 0; }
+.staff-card { border: 1px solid var(--os-selected-border); border-radius: var(--os-radius-lg); background: var(--os-selected); }
+.staff-card-row, .staff-offer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--os-space-3); padding: var(--os-space-3) var(--os-space-4); }
+.staff-card-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.staff-card-body { padding: 0 var(--os-space-4) var(--os-space-4); }
+.staff-offer { border: 1px dashed var(--os-border-strong); border-radius: var(--os-radius-lg); padding-block: var(--os-space-2); }
+.staff-mark { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--os-accent-subtle); color: var(--os-accent-text); flex: none; }
+.card-pad { padding: var(--os-space-4) var(--os-space-5); }
+.waiting-list { list-style: none; margin: 0; padding: 0 var(--os-space-5); }
+.waiting-item + .waiting-item .row-item { border-top: 1px solid var(--os-border); }
+.waiting-item .row-item { border-top: 0; }
+.waiting-item .staff-card-body { padding: 0 0 var(--os-space-4); }
+.staff-plan > * + * { margin-top: var(--os-space-2); }
+
+/* ---------- List + detail desks (Messages) ---------- */
 .desk { display: grid; gap: var(--os-space-4); grid-template-columns: 1fr; align-items: start; }
 .desk-list, .desk-detail { min-width: 0; display: flex; flex-direction: column; gap: var(--os-space-3); }
 .list-heading { font-size: var(--os-type-caption-size); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--os-text-muted); }
@@ -311,8 +333,6 @@ details.card.disclosure[open] { padding-bottom: var(--os-space-5); }
   .desk[data-open] .back-btn { display: inline-flex; }
 }
 
-.prepare-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--os-space-2) var(--os-space-3); }
-.prepare-label { font-size: var(--os-type-label-size); font-weight: 600; color: var(--os-text-muted); }
 .batch { border-color: var(--os-selected-border); background: var(--os-selected); }
 .batch .row { margin-top: var(--os-space-3); }
 

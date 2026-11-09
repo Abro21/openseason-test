@@ -30,13 +30,15 @@ afterAll(async () => {
 });
 
 describe('web app on the in-browser sandbox', () => {
-  it('signs in as a synthetic parent and shows both children and their fees', async () => {
+  it('signs in as a parent in two clubs, switches between their children, and pays a fee', async () => {
     render(<SessionProvider><App /></SessionProvider>);
     fireEvent.click(await screen.findByRole('button', { name: /Sign in as Pat Parent/ }, { timeout: 30_000 }));
     expect(await screen.findByText(/synthetic data that lives only in this browser/, {}, { timeout: 10_000 })).toBeTruthy();
-    const picker = await screen.findByLabelText('Acting as');
-    const labels = Array.from((picker as HTMLSelectElement).options).map((o) => o.textContent);
-    expect(labels).toEqual(expect.arrayContaining(['Family: Mia L.', 'Family: Leo L.']));
+    const role = await screen.findByLabelText('Role', {}, { timeout: 10_000 });
+    expect(Array.from((role as HTMLSelectElement).options).map((o) => o.textContent)).toEqual(['Parent']);
+    const child = screen.getByLabelText('Child') as HTMLSelectElement;
+    const labels = Array.from(child.options).map((o) => o.textContent);
+    expect(labels).toEqual(['Leo L. · Front Range FC', 'Mia L. · Front Range FC', 'Nora L. · Mesa Valley SC']);
     fireEvent.click(await screen.findByRole('button', { name: 'Payments' }));
     await waitFor(() => expect(screen.getAllByRole('button', { name: /Pay installment/ }).length).toBeGreaterThan(0), { timeout: 10_000 });
     const before = screen.getAllByRole('button', { name: /Pay installment/ }).length;

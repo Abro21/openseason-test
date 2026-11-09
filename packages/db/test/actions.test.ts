@@ -49,7 +49,7 @@ describe('staff preparation', () => {
       const b = await t.rpc('staff_prepare', { p_kind: 'practice_plan', p_target: { team_id: TEAMS.u12Blue } });
       expect(b).toBe(a);
       await t.as('casey');
-      const room = await t.rpc('staff_room');
+      const room = await t.rpc('staff_room', { p_tenant: ORGS.frontRange });
       expect(room.work.map((w: any) => w.role_id)).toEqual(['practice_prep']);
       expect(await t.fails('prepared_work_propose', { p_id: a })).toMatch(/saved from the planner/);
       await t.as('dana');
@@ -159,7 +159,7 @@ describe('approval', () => {
       await t.rpc('event_update', { p_event: EVENTS.blueGame, p_expected_version: e!.version, p_starts: e!.starts_at, p_ends: e!.ends_at, p_location: 'Field 9' });
       const res = await t.rpc('action_approve', { p_id: action, p_expected_revision: a.revision, p_expected_hash: a.payload_hash, p_approval_key: key('src') });
       expect(res).toMatchObject({ status: 'needs_refresh', reason: expect.stringMatching(/changed since this was prepared/) });
-      expect((await t.rpc('staff_room')).work[0].stale).toBe(true);
+      expect((await t.rpc('staff_room', { p_tenant: ORGS.frontRange })).work[0].stale).toBe(true);
       expect(await t.rpc('action_refresh', { p_id: action })).toBe('ok');
       const fresh = await t.rpc('action_get', { p_id: action });
       expect(fresh.status).toBe('in_review');
@@ -236,7 +236,7 @@ describe('approval', () => {
       await t.rpc('action_approve', { p_id: action, p_expected_revision: a.revision, p_expected_hash: a.payload_hash, p_approval_key: key('rem') });
       await runWorker(t);
       await t.as('pat');
-      const convs = await t.rpc('my_conversations', { p_search: null, p_archived: false });
+      const convs = await t.rpc('my_conversations', { p_tenant: ORGS.frontRange, p_search: null, p_archived: false });
       expect(JSON.stringify(convs)).toContain('Casey Coach');
     }));
 
@@ -252,7 +252,7 @@ describe('approval', () => {
       await t.rpc('action_approve', { p_id: action, p_expected_revision: a.revision, p_expected_hash: a.payload_hash, p_approval_key: key('fb') });
       await runWorker(t);
       await t.as('jordan');
-      expect(JSON.stringify(await t.rpc('my_conversations', { p_search: null, p_archived: false }))).not.toContain('Feedback for Mia');
+      expect(JSON.stringify(await t.rpc('my_conversations', { p_tenant: ORGS.frontRange, p_search: null, p_archived: false }))).not.toContain('Feedback for Mia');
     }));
 });
 
@@ -295,7 +295,7 @@ describe('refunds through approval', () => {
       await t.rpc('refund_apply_result', { p_refund: rf!.id, p_outcome: 'succeeded', p_provider_ref: 'sbx_re_1' }, 'app');
       expect(await t.rpc('refund_apply_result', { p_refund: rf!.id, p_outcome: 'succeeded', p_provider_ref: 'sbx_re_1' }, 'app')).toBe('already_succeeded');
       await t.as('pat');
-      const [fee] = await t.rpc('my_fees');
+      const [fee] = await t.rpc('my_fees', { p_tenant: ORGS.frontRange });
       expect(fee.paid_cents).toBe(10000);
       await t.as('dana');
       expect((await t.rpc('action_get', { p_id: act })).status).toBe('succeeded');
